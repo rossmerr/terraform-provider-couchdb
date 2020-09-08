@@ -2,20 +2,20 @@ package couchdb
 
 import (
 	"context"
-	"log"
 
 	"github.com/go-kivik/kivik/v3"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 const usersDB = "_users"
 
 func resourceUser() *schema.Resource {
 	return &schema.Resource{
-		Create: UserCreate,
-		Read:   UserRead,
-		Update: UserUpdate,
-		Delete: UserDelete,
+		CreateContext: UserCreate,
+		ReadContext:   UserRead,
+		UpdateContext: UserUpdate,
+		DeleteContext: UserDelete,
 
 		Schema: map[string]*schema.Schema{
 			"revision": {
@@ -45,14 +45,23 @@ func resourceUser() *schema.Resource {
 	}
 }
 
-func UserCreate(d *schema.ResourceData, meta interface{}) error {
-	client, err := connectToCouchDB(meta.(*CouchDBConfiguration))
+func UserCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	// Warning or errors can be collected in a slice type
+	var diags diag.Diagnostics
+
+	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
-	db := client.DB(context.Background(), usersDB)
-
+	db := client.DB(ctx, usersDB)
+	if db.Err() != nil {
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to connect to DB",
+			Detail:   db.Err().Error(),
+		})
+	}
 	user := &tuser{
 		ID:       kivik.UserPrefix + d.Id(),
 		Name:     d.Get("name").(string),
@@ -61,45 +70,73 @@ func UserCreate(d *schema.ResourceData, meta interface{}) error {
 		Password: d.Get("password").(string),
 	}
 
-	log.Println("Executing UserCreate:", user.ID, user)
-	_, err = db.Put(context.Background(), user.ID, user)
+	_, err = db.Put(ctx, user.ID, user)
 	if err != nil {
-		return err
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to create User",
+			Detail:   err.Error(),
+		})
+		return diags
 	}
 
 	d.SetId(user.ID)
-	return UserRead(d, meta)
+	return UserRead(ctx, d, meta)
 }
 
-func UserRead(d *schema.ResourceData, meta interface{}) error {
-	client, err := connectToCouchDB(meta.(*CouchDBConfiguration))
+func UserRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	// Warning or errors can be collected in a slice type
+	var diags diag.Diagnostics
+
+	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
-	db := client.DB(context.Background(), usersDB)
+	db := client.DB(ctx, usersDB)
+	if db.Err() != nil {
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to connect to DB",
+			Detail:   db.Err().Error(),
+		})
+	}
 
-	log.Println("Executing UserRead:", d.Id())
-	row := db.Get(context.Background(), d.Id())
+	row := db.Get(ctx, d.Id())
 
 	var user tuser
 	if err = row.ScanDoc(&user); err != nil {
-		return err
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to read User",
+			Detail:   err.Error(),
+		})
+		return diags
 	}
 
 	d.Set("revision", row.Rev)
 	d.Set("roles", user.Roles)
 
-	return nil
+	return diags
 }
 
-func UserUpdate(d *schema.ResourceData, meta interface{}) error {
-	client, err := connectToCouchDB(meta.(*CouchDBConfiguration))
+func UserUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	// Warning or errors can be collected in a slice type
+	var diags diag.Diagnostics
+
+	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
-	db := client.DB(context.Background(), usersDB)
+	db := client.DB(ctx, usersDB)
+	if db.Err() != nil {
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to connect to DB",
+			Detail:   db.Err().Error(),
+		})
+	}
 
 	user := &tuser{
 		ID:       d.Id(),
@@ -110,31 +147,49 @@ func UserUpdate(d *schema.ResourceData, meta interface{}) error {
 		Revision: d.Get("revision").(string),
 	}
 
-	log.Println("Executing UserUpdate:", user.ID, user)
-	_, err = db.Put(context.Background(), user.ID, user)
+	_, err = db.Put(ctx, user.ID, user)
 	if err != nil {
-		return err
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to update User",
+			Detail:   err.Error(),
+		})
+		return diags
 	}
 
-	return UserRead(d, meta)
+	return UserRead(ctx, d, meta)
 }
 
-func UserDelete(d *schema.ResourceData, meta interface{}) error {
-	client, err := connectToCouchDB(meta.(*CouchDBConfiguration))
+func UserDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	// Warning or errors can be collected in a slice type
+	var diags diag.Diagnostics
+
+	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
-	db := client.DB(context.Background(), usersDB)
+	db := client.DB(ctx, usersDB)
+	if db.Err() != nil {
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to connect to DB",
+			Detail:   db.Err().Error(),
+		})
+	}
 
-	log.Println("Executing UserDelete:", d.Id(), d.Get("revision").(string))
-	_, err = db.Delete(context.Background(), d.Id(), d.Get("revision").(string))
+	_, err = db.Delete(ctx, d.Id(), d.Get("revision").(string))
 	if err != nil {
-		return err
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to delete User",
+			Detail:   err.Error(),
+		})
+		return diags
 	}
 	d.SetId("")
 
-	return nil
+	return diags
 }
 
 type tuser struct {

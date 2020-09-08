@@ -7,9 +7,9 @@ import (
 
 	"github.com/go-kivik/couchdb/v3"
 	"github.com/go-kivik/kivik/v3"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 type CouchDBConfiguration struct {
@@ -21,7 +21,7 @@ type CouchDBConfiguration struct {
 }
 
 
-func Provider() terraform.ResourceProvider {
+func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
 			"endpoint": {
@@ -56,21 +56,22 @@ func Provider() terraform.ResourceProvider {
 			"couchdb_user":                     resourceUser(),
 			"couchdb_database_design_document": resourceDesignDocument(),
 		},
-		ConfigureFunc: providerConfigure,
+		ConfigureContextFunc: providerConfigure,
 	}
 }
 
-func providerConfigure(d *schema.ResourceData) (interface{}, error) {
+func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
+	// Warning or errors can be collected in a slice type
+	var diags diag.Diagnostics
+
 	return &CouchDBConfiguration{
 		Endpoint:        d.Get("endpoint").(string),
 		Username:        d.Get("username").(string),
 		Password:        d.Get("password").(string),
-		MaxConnLifetime: time.Duration(d.Get("max_conn_lifetime_sec").(int)) * time.Second,
-		MaxOpenConns:    d.Get("max_open_conns").(int),
-	}, nil
+	}, diags
 }
 
-func connectToCouchDB(conf *CouchDBConfiguration) (*kivik.Client, error) {
+func connectToCouchDB(ctx context.Context, conf *CouchDBConfiguration) (*kivik.Client, error) {
 
 	var client *kivik.Client
 	var err error
@@ -79,8 +80,7 @@ func connectToCouchDB(conf *CouchDBConfiguration) (*kivik.Client, error) {
 	// when Terraform thinks it's available and when it is actually available.
 	// This is particularly acute when provisioning a server and then immediately
 	// trying to provision a database on it.
-	retryError := resource.Retry(5*time.Minute, func() *resource.RetryError {
-
+	retryError := resource.RetryContext(ctx, 5*time.Minute, func() *resource.RetryError {
 		client, err = kivik.New("couch", conf.Endpoint)
 		if err != nil {
 			return resource.RetryableError(err)
@@ -91,7 +91,7 @@ func connectToCouchDB(conf *CouchDBConfiguration) (*kivik.Client, error) {
 			return resource.RetryableError(err)
 		}
 
-		err := client.Authenticate(context.Background(), couchdb.BasicAuth(conf.Username, conf.Password))
+		err := client.Authenticate(ctx, couchdb.BasicAuth(conf.Username, conf.Password))
 		if err != nil {
 			return resource.RetryableError(err)
 		}

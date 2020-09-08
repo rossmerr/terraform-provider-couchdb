@@ -2,7 +2,7 @@ package main
 
 import (
 	"github.com/RossMerr/terraform-provider-couchdb/couchdb"
-	"github.com/hashicorp/terraform-plugin-sdk/plugin"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/plugin"
 )
 
 func main() {

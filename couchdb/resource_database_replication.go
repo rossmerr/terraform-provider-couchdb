@@ -4,15 +4,16 @@ import (
 	"context"
 
 	"github.com/go-kivik/kivik/v3"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func resourceDatabaseReplication() *schema.Resource {
 	return &schema.Resource{
-		Create: DatabaseReplicationCreate,
-		Read:   DatabaseReplicationRead,
-		Delete: DatabaseReplicationDelete,
-
+		CreateContext: DatabaseReplicationCreate,
+		ReadContext:   DatabaseReplicationRead,
+		DeleteContext: DatabaseReplicationDelete,
+		UpdateContext: DatabaseReplicationUpdate,
 		Schema: map[string]*schema.Schema{
 			"name": {
 				Type:        schema.TypeString,
@@ -61,10 +62,10 @@ func resourceDatabaseReplication() *schema.Resource {
 	}
 }
 
-func DatabaseReplicationCreate(d *schema.ResourceData, meta interface{}) error {
-	client, err := connectToCouchDB(meta.(*CouchDBConfiguration))
+func DatabaseReplicationCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	options := kivik.Options{
@@ -74,24 +75,27 @@ func DatabaseReplicationCreate(d *schema.ResourceData, meta interface{}) error {
 		"filter": d.Get("filter").(string),
 	}
 
-	rep, err := client.Replicate(context.Background(), d.Get("target").(string), d.Get("source").(string), options)
+	rep, err := client.Replicate(ctx, d.Get("target").(string), d.Get("source").(string), options)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 	d.SetId(rep.ReplicationID())
 
-	return DatabaseReplicationRead(d, meta)
+	return DatabaseReplicationRead(ctx, d, meta)
 }
 
-func DatabaseReplicationRead(d *schema.ResourceData, meta interface{}) error {
-	client, err := connectToCouchDB(meta.(*CouchDBConfiguration))
+func DatabaseReplicationRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	// Warning or errors can be collected in a slice type
+	var diags diag.Diagnostics
+
+	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
-	reps, err := client.GetReplications(context.Background())
+	reps, err := client.GetReplications(ctx)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	for _, rep := range reps {
@@ -105,30 +109,41 @@ func DatabaseReplicationRead(d *schema.ResourceData, meta interface{}) error {
 		}
 	}
 
-	return nil
+	return diags
 }
 
 
-func DatabaseReplicationDelete(d *schema.ResourceData, meta interface{}) error {
-	client, err := connectToCouchDB(meta.(*CouchDBConfiguration))
+func DatabaseReplicationDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	// Warning or errors can be collected in a slice type
+	var diags diag.Diagnostics
+
+	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
-	reps, err := client.GetReplications(context.Background())
+	reps, err := client.GetReplications(ctx)
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	for _, rep := range reps {
 		if rep.ReplicationID() == d.Id() {
-			err = rep.Delete(context.Background())
+			err = rep.Delete(ctx)
 			if err != nil {
-				return err
+				return diag.FromErr(err)
 			}
 		}
 	}
 
 	d.SetId("")
-	return nil
+	return diags
+}
+
+func DatabaseReplicationUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	err := DatabaseReplicationDelete(ctx, d, meta)
+	if err != nil {
+		return err
+	}
+	return DatabaseReplicationCreate(ctx, d, meta)
 }

@@ -4,18 +4,18 @@ import (
 	"context"
 	"crypto/md5"
 	"fmt"
-	"log"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 
 func resourceDesignDocument() *schema.Resource {
 	return &schema.Resource{
-		Create: DesignDocumentCreate,
-		Read:   DesignDocumentRead,
-		Update: DesignDocumentUpdate,
-		Delete: DesignDocumentDelete,
+		CreateContext: DesignDocumentCreate,
+		ReadContext:   DesignDocumentRead,
+		UpdateContext: DesignDocumentUpdate,
+		DeleteContext: DesignDocumentDelete,
 
 		Schema: map[string]*schema.Schema{
 			"database": {
@@ -79,14 +79,24 @@ func resourceDesignDocument() *schema.Resource {
 }
 
 
-func DesignDocumentCreate(d *schema.ResourceData, meta interface{}) error {
-	client, err := connectToCouchDB(meta.(*CouchDBConfiguration))
+func DesignDocumentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	// Warning or errors can be collected in a slice type
+	var diags diag.Diagnostics
+
+	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	dbName := d.Get("database").(string)
-	db := client.DB(context.Background(), dbName)
+	db := client.DB(ctx, dbName)
+	if db.Err() != nil {
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to connect to DB",
+			Detail:   db.Err().Error(),
+		})
+	}
 
 	docId := fmt.Sprintf("_design/%s", d.Get("name").(string))
 
@@ -109,10 +119,14 @@ func DesignDocumentCreate(d *schema.ResourceData, meta interface{}) error {
 			}
 		}
 
-		log.Println("Executing DesignDocumentCreate:", docId, ddoc)
-		rev, err := db.Put(context.Background(), docId, ddoc)
+		rev, err := db.Put(ctx, docId, ddoc)
 		if err != nil {
-			return err
+			diags = append(diags, diag.Diagnostic{
+				Severity: diag.Error,
+				Summary:  "Unable to create design doc",
+				Detail:   err.Error(),
+			})
+			return diags
 		}
 
 		d.Set("revision", rev)
@@ -120,43 +134,61 @@ func DesignDocumentCreate(d *schema.ResourceData, meta interface{}) error {
 
 	d.SetId(docId)
 
-	return DesignDocumentRead(d, meta)
+	return DesignDocumentRead(ctx, d, meta)
 }
 
-func DesignDocumentRead(d *schema.ResourceData, meta interface{}) error {
-	client, err := connectToCouchDB(meta.(*CouchDBConfiguration))
+func DesignDocumentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	// Warning or errors can be collected in a slice type
+	var diags diag.Diagnostics
+
+	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	dbName := d.Get("database").(string)
-	db := client.DB(context.Background(), dbName)
-
+	db := client.DB(ctx, dbName)
+	if db.Err() != nil {
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to connect to DB",
+			Detail:   db.Err().Error(),
+		})
+	}
 	docId := fmt.Sprintf("_design/%s", d.Get("name").(string))
 
-	log.Println("Executing DesignDocumentRead:", docId)
-	row := db.Get(context.Background(), docId)
+	row := db.Get(ctx, docId)
 
 	var ddoc map[string]map[string]interface{}
 	if err = row.ScanDoc(&ddoc); err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	d.Set("language", ddoc["language"])
 	d.Set("view", ddoc["views"])
 	d.Set("revision", row.Rev)
 
-	return nil
+	return diags
 }
 
-func DesignDocumentUpdate(d *schema.ResourceData, meta interface{}) error {
-	client, err := connectToCouchDB(meta.(*CouchDBConfiguration))
+func DesignDocumentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	// Warning or errors can be collected in a slice type
+	var diags diag.Diagnostics
+
+	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	dbName := d.Get("database").(string)
-	db := client.DB(context.Background(), dbName)
+	db := client.DB(ctx, dbName)
+	if db.Err() != nil {
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to connect to DB",
+			Detail:   db.Err().Error(),
+		})
+	}
 
 	if vs, ok := d.GetOk("view"); ok {
 
@@ -178,31 +210,52 @@ func DesignDocumentUpdate(d *schema.ResourceData, meta interface{}) error {
 			}
 		}
 
-		log.Println("Executing DesignDocumentUpdate:", d.Id(), ddoc)
-		rev, err := db.Put(context.Background(), d.Id(), ddoc)
+		rev, err := db.Put(ctx, d.Id(), ddoc)
 		if err != nil {
-			return err
+			diags = append(diags, diag.Diagnostic{
+				Severity: diag.Error,
+				Summary:  "Unable to update design doc",
+				Detail:   err.Error(),
+			})
+			return diags
 		}
 
 		d.Set("revision", rev)
 	}
 
-	return nil
+	return diags
 }
 
-func DesignDocumentDelete(d *schema.ResourceData, meta interface{}) error {
-	client, err := connectToCouchDB(meta.(*CouchDBConfiguration))
+func DesignDocumentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	// Warning or errors can be collected in a slice type
+	var diags diag.Diagnostics
+
+	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return err
+		return diag.FromErr(err)
 	}
 
 	dbName := d.Get("database").(string)
-	db := client.DB(context.Background(), dbName)
+	db := client.DB(ctx, dbName)
+	if db.Err() != nil {
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to connect to DB",
+			Detail:   db.Err().Error(),
+		})
+	}
+	_, err = db.Delete(ctx, d.Id(), d.Get("revision").(string))
 
-	log.Println("Executing DesignDocumentDelete:", d.Id(), d.Get("revision").(string))
-	_, err = db.Delete(context.Background(), d.Id(), d.Get("revision").(string))
+	if err != nil {
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to delete design doc",
+			Detail:   err.Error(),
+		})
+		return diags
+	}
 
 	d.SetId("")
-	return nil
+	return diags
 }
 

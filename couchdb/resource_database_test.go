@@ -6,8 +6,8 @@ import (
 	"strconv"
 	"testing"
 
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 func TestAccCouchDBDatabase_basic(t *testing.T) {
@@ -49,7 +49,7 @@ func testAccCouchDBDatabaseExists(n string) resource.TestCheckFunc {
 		if rs.Primary.ID == "" {
 			return fmt.Errorf("database ID is set")
 		}
-		client, err := connectToCouchDB(testAccProvider.Meta().(*CouchDBConfiguration))
+		client, err := connectToCouchDB(context.Background(), testAccProvider.Meta().(*CouchDBConfiguration))
 		if err != nil {
 			return err
 		}
@@ -79,7 +79,7 @@ func testAccCouchDBDatabaseSecurity(n string) resource.TestCheckFunc {
 			return fmt.Errorf("database ID is not set")
 		}
 
-		client, err := connectToCouchDB(testAccProvider.Meta().(*CouchDBConfiguration))
+		client, err := connectToCouchDB(context.Background(), testAccProvider.Meta().(*CouchDBConfiguration))
 		if err != nil {
 			return err
 		}
@@ -108,7 +108,7 @@ func testAccCouchDBDatabaseSecurity(n string) resource.TestCheckFunc {
 }
 
 func testAccCouchDBDatabaseDestroy(s *terraform.State) error {
-	client, err := connectToCouchDB(testAccProvider.Meta().(*CouchDBConfiguration))
+	client, err := connectToCouchDB(context.Background(), testAccProvider.Meta().(*CouchDBConfiguration))
 	if err != nil {
 		return err
 	}

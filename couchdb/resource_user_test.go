@@ -7,8 +7,8 @@ import (
 	"testing"
 
 	"github.com/go-kivik/kivik/v3"
-	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
-	"github.com/hashicorp/terraform-plugin-sdk/terraform"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
 func TestAccCouchDBUser_basic(t *testing.T) {
@@ -39,7 +39,7 @@ func testAccCouchDBUserExists(n string) resource.TestCheckFunc {
 			return fmt.Errorf("user ID is not set")
 		}
 
-		client, err := connectToCouchDB(testAccProvider.Meta().(*CouchDBConfiguration))
+		client, err := connectToCouchDB(context.Background(), testAccProvider.Meta().(*CouchDBConfiguration))
 		if err != nil {
 			return err
 		}
@@ -62,7 +62,7 @@ func testAccCouchDBUserDestroy(s *terraform.State) error {
 			continue
 		}
 
-		client, err := connectToCouchDB(testAccProvider.Meta().(*CouchDBConfiguration))
+		client, err := connectToCouchDB(context.Background(), testAccProvider.Meta().(*CouchDBConfiguration))
 		if err != nil {
 			return err
 		}
