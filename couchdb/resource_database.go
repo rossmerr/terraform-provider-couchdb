@@ -112,7 +112,7 @@ func CreateDatabase(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	dbName := d.Get("name").(string)
-	log.Println("Executing CreateDB:", dbName)
+	log.Println("Executing CreateDatabase:", dbName)
 
 	err = client.CreateDB(context.Background(), dbName, extractClusterOptions(d.Get("clustering")))
 	if err != nil {
@@ -144,7 +144,7 @@ func UpdateDatabase(d *schema.ResourceData, meta interface{}) error {
 	dbName := d.Get("name").(string)
 
 	if d.HasChange("security") {
-		log.Println("Executing SetSecurity on:", dbName)
+		log.Println("Executing UpdateDatabase on:", dbName)
 		db := client.DB(context.Background(), dbName)
 		if v, ok := d.GetOk("security"); ok {
 			vs := v.([]interface{})
@@ -173,7 +173,7 @@ func ReadDatabase(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	dbName := d.Id()
-	log.Println("Executing DBsStats on:", dbName)
+	log.Println("Executing ReadDatabase:", dbName)
 	dbStates, err := client.DBsStats(context.Background(), []string{dbName} )
 	if err != nil {
 		return err
@@ -218,7 +218,7 @@ func DeleteDatabase(d *schema.ResourceData, meta interface{}) error {
 	}
 
 	dbName := d.Id()
-	log.Println("Executing DestroyDB:", dbName)
+	log.Println("Executing DeleteDatabase:", dbName)
 	err = client.DestroyDB(context.Background(), dbName)
 	if err == nil {
 		d.SetId("")

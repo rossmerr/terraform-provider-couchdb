@@ -52,6 +52,7 @@ func Provider() terraform.ResourceProvider {
 
 		ResourcesMap: map[string]*schema.Resource{
 			"couchdb_database":                 resourceDatabase(),
+			"couchdb_database_replication":     resourceDatabaseReplication(),
 			"couchdb_user":                     resourceUser(),
 			"couchdb_database_design_document": resourceDesignDocument(),
 		},

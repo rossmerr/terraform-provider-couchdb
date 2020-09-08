@@ -2,6 +2,7 @@ package couchdb
 
 import (
 	"context"
+	"log"
 
 	"github.com/go-kivik/kivik/v3"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
@@ -60,6 +61,7 @@ func UserCreate(d *schema.ResourceData, meta interface{}) error {
 		Password: d.Get("password").(string),
 	}
 
+	log.Println("Executing UserCreate:", user.ID, user)
 	_, err = db.Put(context.Background(), user.ID, user)
 	if err != nil {
 		return err
@@ -77,6 +79,7 @@ func UserRead(d *schema.ResourceData, meta interface{}) error {
 
 	db := client.DB(context.Background(), usersDB)
 
+	log.Println("Executing UserRead:", d.Id())
 	row := db.Get(context.Background(), d.Id())
 
 	var user tuser
@@ -107,6 +110,7 @@ func UserUpdate(d *schema.ResourceData, meta interface{}) error {
 		Revision: d.Get("revision").(string),
 	}
 
+	log.Println("Executing UserUpdate:", user.ID, user)
 	_, err = db.Put(context.Background(), user.ID, user)
 	if err != nil {
 		return err
@@ -123,6 +127,7 @@ func UserDelete(d *schema.ResourceData, meta interface{}) error {
 
 	db := client.DB(context.Background(), usersDB)
 
+	log.Println("Executing UserDelete:", d.Id(), d.Get("revision").(string))
 	_, err = db.Delete(context.Background(), d.Id(), d.Get("revision").(string))
 	if err != nil {
 		return err
