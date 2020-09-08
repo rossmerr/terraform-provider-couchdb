@@ -1,9 +1,13 @@
 package couchdb
 
 import (
+	"context"
+	"fmt"
 	"os"
 	"testing"
 
+	"github.com/go-kivik/couchdb/v3"
+	"github.com/go-kivik/kivik/v3"
 	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 )
@@ -39,4 +43,29 @@ func testAccPreCheck(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+}
+
+func testAccCouchDBUserWorks(endpoint, username, password, expectedRole string) error {
+	client, err := kivik.New("couch", endpoint)
+	if err != nil {
+		return err
+	}
+
+	err = client.Authenticate(context.Background(), couchdb.BasicAuth(username, password))
+	if err != nil {
+		return err
+	}
+
+	sess, err :=  client.Session(context.Background())
+	if err != nil {
+		return err
+	}
+
+	if sess.Name != username {
+		return fmt.Errorf("Expected user %s, but got %s", username, sess.Name)
+	}
+	if sess.Roles[0] != expectedRole {
+		return fmt.Errorf("Expected user role %s, but got %s", expectedRole, sess.Roles)
+	}
+	return nil
 }

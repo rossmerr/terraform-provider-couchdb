@@ -85,7 +85,6 @@ func connectToCouchDB(conf *CouchDBConfiguration) (*kivik.Client, error) {
 			return resource.RetryableError(err)
 		}
 
-
 		_, err = client.Ping(context.Background())
 		if err != nil {
 			return resource.RetryableError(err)
