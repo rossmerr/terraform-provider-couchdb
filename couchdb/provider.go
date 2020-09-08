@@ -5,9 +5,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hashicorp/terraform/helper/resource"
-	"github.com/hashicorp/terraform/helper/schema"
-	"github.com/hashicorp/terraform/terraform"
+	"github.com/go-kivik/couchdb/v3"
+	"github.com/go-kivik/kivik/v3"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/resource"
+	"github.com/hashicorp/terraform-plugin-sdk/helper/schema"
+	"github.com/hashicorp/terraform-plugin-sdk/terraform"
 )
 
 type CouchDBConfiguration struct {
@@ -17,6 +19,7 @@ type CouchDBConfiguration struct {
 	MaxConnLifetime time.Duration
 	MaxOpenConns    int
 }
+
 
 func Provider() terraform.ResourceProvider {
 	return &schema.Provider{
@@ -82,7 +85,8 @@ func connectToCouchDB(conf *CouchDBConfiguration) (*kivik.Client, error) {
 			return resource.RetryableError(err)
 		}
 
-		_, err = client.Ping()
+
+		_, err = client.Ping(context.Background())
 		if err != nil {
 			return resource.RetryableError(err)
 		}
@@ -98,8 +102,6 @@ func connectToCouchDB(conf *CouchDBConfiguration) (*kivik.Client, error) {
 	if retryError != nil {
 		return nil, fmt.Errorf("Could not connect to server: %s", retryError)
 	}
-	client.
-		db.SetConnMaxLifetime(conf.MaxConnLifetime)
-	db.SetMaxOpenConns(conf.MaxOpenConns)
-	return db, nil
+
+	return client, nil
 }

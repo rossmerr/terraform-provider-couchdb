@@ -1,6 +1,6 @@
 # terraform-provider-couchdb
 
-A terraform provider for CouchDB, can be use as a drop in replacement of [nicolai86](https://github.com/nicolai86/terraform-provider-couchdb) provider.
+A Terraform provider for CouchDB, can be use as a drop in replacement of [nicolai86](https://github.com/nicolai86/terraform-provider-couchdb) provider.
 
 
 * Support for the CouchDB API v3
