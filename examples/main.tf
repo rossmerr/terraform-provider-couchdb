@@ -26,3 +26,13 @@ resource "couchdb_database_design_document" "test" {
     reduce = ""
   }
 }
+
+resource "couchdb_database" "user" {
+  name = "_users"
+}
+
+
+resource "couchdb_user" "jenny" {
+  name = "jenny"
+  password = "secret"
+}

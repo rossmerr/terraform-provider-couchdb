@@ -2,6 +2,7 @@ package couchdb
 
 import (
 	"context"
+	"fmt"
 	"strconv"
 
 	"github.com/go-kivik/kivik/v3"
@@ -139,6 +140,13 @@ func CreateDatabase(ctx context.Context, d *schema.ResourceData, meta interface{
 		return diags
 	}
 
+	d.SetId(dbName)
+
+	// You can't edit the security object of the user database.
+	if dbName == usersDB {
+		return ReadDatabase(ctx, d, meta)
+	}
+
 	if v, ok := d.GetOk("security"); ok {
 		vs := v.([]interface{})
 		if len(vs) == 1 {
@@ -155,7 +163,6 @@ func CreateDatabase(ctx context.Context, d *schema.ResourceData, meta interface{
 		}
 	}
 
-	d.SetId(dbName)
 
 	return ReadDatabase(ctx, d, meta)
 }
@@ -174,6 +181,11 @@ func UpdateDatabase(ctx context.Context, d *schema.ResourceData, meta interface{
 	}
 	dbName := d.Get("name").(string)
 
+	// You can't edit the security object of the user database.
+	if dbName == usersDB {
+		return ReadDatabase(ctx, d, meta)
+	}
+
 	if d.HasChange("security") {
 		db, dd := connectToDB(ctx, client, dbName)
 		if dd != nil {
@@ -188,18 +200,18 @@ func UpdateDatabase(ctx context.Context, d *schema.ResourceData, meta interface{
 				if err != nil {
 					diags = append(diags, diag.Diagnostic{
 						Severity: diag.Error,
-						Summary:  "Unable to set security on DB",
+						Summary:  "Unable to update security on DB",
 						Detail:   err.Error(),
 					})
 					return diags
 				}
 			}
 		} else {
-			err := db.SetSecurity(ctx, extractDatabaseSecurity(nil))
+			err := db.SetSecurity(ctx, &kivik.Security{})
 			if err != nil {
 				diags = append(diags, diag.Diagnostic{
 					Severity: diag.Error,
-					Summary:  "Unable to set security on DB",
+					Summary:  "Unable to clear security on DB",
 					Detail:   err.Error(),
 				})
 				return diags
@@ -249,6 +261,11 @@ func ReadDatabase(ctx context.Context, d *schema.ResourceData, meta interface{})
 		return diags
 	}
 
+	// You can't edit the security object of the user database.
+	if dbName == usersDB {
+		return diags
+	}
+
 	sec, err := db.Security(ctx)
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
@@ -259,15 +276,22 @@ func ReadDatabase(ctx context.Context, d *schema.ResourceData, meta interface{})
 		return diags
 	}
 
-	security := []map[string][]string{
-		{
-			"admins":       sec.Admins.Names,
-			"admin_roles":  sec.Admins.Roles,
-			"members":      sec.Members.Names,
-			"member_roles": sec.Members.Roles,
-		},
+	if len(sec.Admins.Roles) > 0 ||
+		len(sec.Admins.Names) > 0 ||
+		len(sec.Members.Roles) > 0 ||
+		len(sec.Members.Names) > 0 {
+		security := []map[string][]string{
+			{
+				"admins":       sec.Admins.Names,
+				"admin_roles":  sec.Admins.Roles,
+				"members":      sec.Members.Names,
+				"member_roles": sec.Members.Roles,
+			},
+		}
+		d.Set("security", security)
+	} else {
+		d.Set("security", nil)
 	}
-	d.Set("security", security)
 
 	return diags
 }
@@ -289,12 +313,13 @@ func DeleteDatabase(ctx context.Context, d *schema.ResourceData, meta interface{
 	err = client.DestroyDB(ctx, dbName)
 	if err == nil {
 		d.SetId("")
+		return diags
 	}
 
 	diags = append(diags, diag.Diagnostic{
 		Severity: diag.Error,
 		Summary:  "Unable to delete DB",
-		Detail:   err.Error(),
+		Detail:  fmt.Sprintf("dbName: %s \n%s", dbName,  err.Error()),
 	})
 
 	return diags

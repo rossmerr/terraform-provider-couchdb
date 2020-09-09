@@ -2,8 +2,10 @@ package couchdb
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/go-kivik/kivik/v3"
+	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -46,7 +48,6 @@ func resourceUser() *schema.Resource {
 }
 
 func UserCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	// Warning or errors can be collected in a slice type
 	var diags diag.Diagnostics
 
 	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
@@ -66,7 +67,7 @@ func UserCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) d
 	}
 
 	user := &tuser{
-		ID:       kivik.UserPrefix + d.Id(),
+		ID:       kivik.UserPrefix + uuid.New().String(),
 		Name:     d.Get("name").(string),
 		Type:     "user",
 		Roles:    stringsFromSet(d.Get("roles")),
@@ -88,7 +89,6 @@ func UserCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) d
 }
 
 func UserRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	// Warning or errors can be collected in a slice type
 	var diags diag.Diagnostics
 
 	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
@@ -127,7 +127,6 @@ func UserRead(ctx context.Context, d *schema.ResourceData, meta interface{}) dia
 }
 
 func UserUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	// Warning or errors can be collected in a slice type
 	var diags diag.Diagnostics
 
 	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
@@ -157,6 +156,7 @@ func UserUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) d
 
 	_, err = db.Put(ctx, user.ID, user)
 	if err != nil {
+
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Error,
 			Summary:  "Unable to update User",
@@ -169,7 +169,6 @@ func UserUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) d
 }
 
 func UserDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	// Warning or errors can be collected in a slice type
 	var diags diag.Diagnostics
 
 	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
@@ -191,9 +190,9 @@ func UserDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) d
 	_, err = db.Delete(ctx, d.Id(), d.Get("revision").(string))
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
+			Severity: diag.Warning,
 			Summary:  "Unable to delete User",
-			Detail:   err.Error(),
+			Detail:  fmt.Sprintf("docID: %s \nrev: %s \n%s", d.Id(), d.Get("revision").(string),  err.Error()),
 		})
 		return diags
 	}

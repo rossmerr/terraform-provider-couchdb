@@ -45,7 +45,7 @@ func resourceDesignDocument() *schema.Resource {
 			"view": {
 				Type:        schema.TypeSet,
 				Optional:    true,
-
+				MaxItems:    1,
 				Description: "A view inside the design document",
 				Set: func(v interface{}) int {
 					view := v.(map[string]interface{})
@@ -233,7 +233,7 @@ func DesignDocumentUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		rev, err := db.Put(ctx, d.Id(), designDoc)
 		if err != nil {
 			diags = append(diags, diag.Diagnostic{
-				Severity: diag.Error,
+				Severity: diag.Warning,
 				Summary:  "Unable to update design doc",
 				Detail:   err.Error(),
 			})
@@ -272,7 +272,7 @@ func DesignDocumentDelete(ctx context.Context, d *schema.ResourceData, meta inte
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Error,
 			Summary:  "Unable to delete design doc",
-			Detail:   err.Error(),
+			Detail:  fmt.Sprintf("docID: %s \nrev: %s \n%s", d.Id(), d.Get("revision").(string),  err.Error()),
 		})
 		return diags
 	}
