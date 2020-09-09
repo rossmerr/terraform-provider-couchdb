@@ -25,6 +25,13 @@ func resourceDatabase() *schema.Resource {
 				ForceNew:    true,
 				Description: "Name of the database",
 			},
+			"partitioned": {
+				Type:        schema.TypeBool,
+				Optional:    true,
+				Default:     false,
+				ForceNew: 	 true,
+				Description: "Whether to create a partitioned database",
+			},
 			"security": {
 				Type:        schema.TypeList,
 				MaxItems:    1,
@@ -106,16 +113,23 @@ func resourceDatabase() *schema.Resource {
 }
 
 func CreateDatabase(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	// Warning or errors can be collected in a slice type
 	var diags diag.Diagnostics
 
 	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return diag.FromErr(err)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to connect to Server",
+			Detail:   err.Error(),
+		})
+		return diags
 	}
 
 	dbName := d.Get("name").(string)
-	err = client.CreateDB(ctx, dbName, extractClusterOptions(d.Get("clustering")))
+	options := extractClusterOptions(d.Get("clustering"))
+	options["partitioned"] = d.Get("partitioned").(bool)
+
+	err = client.CreateDB(ctx, dbName, options)
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Error,
@@ -147,24 +161,24 @@ func CreateDatabase(ctx context.Context, d *schema.ResourceData, meta interface{
 }
 
 func UpdateDatabase(ctx context.Context, d *schema.ResourceData, meta interface{})  diag.Diagnostics {
-	// Warning or errors can be collected in a slice type
 	var diags diag.Diagnostics
 
 	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return diag.FromErr(err)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to connect to Server",
+			Detail:   err.Error(),
+		})
+		return diags
 	}
-
 	dbName := d.Get("name").(string)
 
 	if d.HasChange("security") {
-		db := client.DB(ctx, dbName)
-		if db.Err() != nil {
-			diags = append(diags, diag.Diagnostic{
-				Severity: diag.Error,
-				Summary:  "Unable to connect to DB",
-				Detail:   db.Err().Error(),
-			})
+		db, dd := connectToDB(ctx, client, dbName)
+		if dd != nil {
+			diags = append(diags, *dd)
+			return diags
 		}
 
 		if v, ok := d.GetOk("security"); ok {
@@ -198,12 +212,16 @@ func UpdateDatabase(ctx context.Context, d *schema.ResourceData, meta interface{
 }
 
 func ReadDatabase(ctx context.Context, d *schema.ResourceData, meta interface{})  diag.Diagnostics {
-	// Warning or errors can be collected in a slice type
 	var diags diag.Diagnostics
 
 	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return diag.FromErr(err)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to connect to Server",
+			Detail:   err.Error(),
+		})
+		return diags
 	}
 
 	dbName := d.Id()
@@ -225,13 +243,10 @@ func ReadDatabase(ctx context.Context, d *schema.ResourceData, meta interface{})
 		d.Set("data_size", strconv.FormatInt(state.ActiveSize, 16))
 	}
 
-	db := client.DB(ctx, dbName)
-	if db.Err() != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Unable to connect to DB",
-			Detail:   db.Err().Error(),
-		})
+	db, dd := connectToDB(ctx, client, dbName)
+	if dd != nil {
+		diags = append(diags, *dd)
+		return diags
 	}
 
 	sec, err := db.Security(ctx)
@@ -258,12 +273,16 @@ func ReadDatabase(ctx context.Context, d *schema.ResourceData, meta interface{})
 }
 
 func DeleteDatabase(ctx context.Context, d *schema.ResourceData, meta interface{})  diag.Diagnostics {
-	// Warning or errors can be collected in a slice type
 	var diags diag.Diagnostics
 
 	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return diag.FromErr(err)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to connect to Server",
+			Detail:   err.Error(),
+		})
+		return diags
 	}
 
 	dbName := d.Id()
@@ -281,7 +300,8 @@ func DeleteDatabase(ctx context.Context, d *schema.ResourceData, meta interface{
 	return diags
 }
 
-func extractClusterOptions(v interface{}) (ret kivik.Options) {
+func extractClusterOptions(v interface{}) (kivik.Options) {
+	ret := kivik.Options{}
 	vs := v.([]interface{})
 	if len(vs) != 1 {
 		return ret

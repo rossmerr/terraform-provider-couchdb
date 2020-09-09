@@ -7,6 +7,7 @@ import (
 
 	"github.com/go-kivik/couchdb/v3"
 	"github.com/go-kivik/kivik/v3"
+	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -28,13 +29,18 @@ func Provider() *schema.Provider {
 				Type:        schema.TypeString,
 				Required:    true,
 				DefaultFunc: schema.EnvDefaultFunc("COUCHDB_ENDPOINT", nil),
-				ValidateFunc: func(v interface{}, k string) (ws []string, errors []error) {
+				ValidateDiagFunc: func(v interface{}, p cty.Path) diag.Diagnostics {
+					var diags diag.Diagnostics
 					value := v.(string)
 					if value == "" {
-						errors = append(errors, fmt.Errorf("Endpoint must not be an empty string"))
+						diags = append(diags, diag.Diagnostic{
+							Severity: diag.Error,
+							Summary:  "Validate endpoint",
+							Detail:   "Endpoint must not be an empty string",
+						})
 					}
 
-					return
+					return diags
 				},
 			},
 			"username": {
@@ -54,6 +60,7 @@ func Provider() *schema.Provider {
 			"couchdb_database":                 resourceDatabase(),
 			"couchdb_database_replication":     resourceDatabaseReplication(),
 			"couchdb_user":                     resourceUser(),
+			//"couchdb_document":                 resourceDocument(),
 			"couchdb_database_design_document": resourceDesignDocument(),
 		},
 		ConfigureContextFunc: providerConfigure,
@@ -61,7 +68,6 @@ func Provider() *schema.Provider {
 }
 
 func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}, diag.Diagnostics) {
-	// Warning or errors can be collected in a slice type
 	var diags diag.Diagnostics
 
 	return &CouchDBConfiguration{
@@ -104,4 +110,49 @@ func connectToCouchDB(ctx context.Context, conf *CouchDBConfiguration) (*kivik.C
 	}
 
 	return client, nil
+}
+
+func connectToDB(ctx context.Context, client *kivik.Client, dbName string) (*kivik.DB, *diag.Diagnostic) {
+
+	var db *kivik.DB
+
+	// When provisioning a database server there can often be a lag between
+	// when Terraform thinks it's available and when it is actually available.
+	// This is particularly acute when provisioning a server and then immediately
+	// trying to provision a database on it.
+	retryError := resource.RetryContext(ctx, 5*time.Minute, func() *resource.RetryError {
+		db = client.DB(ctx, dbName)
+		if db.Err() != nil {
+			return resource.RetryableError(db.Err())
+		}
+
+		return nil
+	})
+
+	if retryError != nil {
+		return nil, &diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to connect to DB",
+			Detail:   fmt.Sprintf("Could not connect to server: %s", retryError),
+		}
+	}
+
+	retryError = resource.RetryContext(ctx, 5*time.Minute, func() *resource.RetryError {
+		_, err := db.Stats(ctx)
+		if err != nil {
+			return resource.RetryableError(err)
+		}
+
+		return nil
+	})
+
+	if retryError != nil {
+		return nil, &diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to connect to DB Stats",
+			Detail:   fmt.Sprintf("Could not connect to server: %s", retryError, dbName),
+		}
+	}
+
+	return db, nil
 }

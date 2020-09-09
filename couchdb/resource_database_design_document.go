@@ -3,12 +3,13 @@ package couchdb
 import (
 	"context"
 	"crypto/md5"
+	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
-
 
 func resourceDesignDocument() *schema.Resource {
 	return &schema.Resource{
@@ -44,12 +45,15 @@ func resourceDesignDocument() *schema.Resource {
 			"view": {
 				Type:        schema.TypeSet,
 				Optional:    true,
+
 				Description: "A view inside the design document",
 				Set: func(v interface{}) int {
 					view := v.(map[string]interface{})
 					name := view["name"].(string)
+					_map := view["map"].(string)
+					reduce := view["reduce"].(string)
 					id := 0
-					for _, b := range md5.Sum([]byte(name)) {
+					for _, b := range md5.Sum([]byte(name + _map + reduce)) {
 						id += int(b)
 					}
 					return id
@@ -65,6 +69,7 @@ func resourceDesignDocument() *schema.Resource {
 							Type:        schema.TypeString,
 							Required:    true,
 							Description: "Map function",
+
 						},
 						"reduce": {
 							Type:        schema.TypeString,
@@ -78,53 +83,61 @@ func resourceDesignDocument() *schema.Resource {
 	}
 }
 
-
 func DesignDocumentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	// Warning or errors can be collected in a slice type
 	var diags diag.Diagnostics
 
 	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return diag.FromErr(err)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to connect to Server",
+			Detail:   err.Error(),
+		})
+		return diags
 	}
 
 	dbName := d.Get("database").(string)
-	db := client.DB(ctx, dbName)
-	if db.Err() != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Unable to connect to DB",
-			Detail:   db.Err().Error(),
-		})
+
+	db, dd := connectToDB(ctx, client, dbName)
+	if dd != nil {
+		diags = append(diags, *dd)
+		return diags
 	}
 
 	docId := fmt.Sprintf("_design/%s", d.Get("name").(string))
 
 	if vs, ok := d.GetOk("view"); ok {
 
-		i := map[string]interface{}{}
-		ddoc := map[string]interface{}{
-			"_id": docId,
-			"views": i,
-			"language": d.Get("language").(string),
+		designDoc := tdesignDoc{
+			ID:       docId,
+			Language: d.Get("language").(string),
+			View:     Tview{},
 		}
 
 		views := vs.(*schema.Set)
 		for _, v := range views.List() {
 			view := v.(map[string]interface{})
-
-			i[view["name"].(string)] = map[string]interface{}{
-				 "map": view["map"].(string),
-				 "reduce": view["reduce"].(string),
-			}
+			designDoc.View.Name = view["name"].(string)
+			designDoc.View.Map = strings.ReplaceAll(view["map"].(string), "\n", "")
+			designDoc.View.Reduce = strings.ReplaceAll(view["reduce"].(string), "\n", "")
 		}
 
-		rev, err := db.Put(ctx, docId, ddoc)
+		rev, err := db.Put(ctx, docId, designDoc)
 		if err != nil {
+
+			body := ""
+			if b, err := json.Marshal(designDoc); err == nil {
+				body = string(b)
+			} else {
+				body = err.Error()
+			}
+
+			url := fmt.Sprintf("%s/%s", dbName, docId)
+
 			diags = append(diags, diag.Diagnostic{
 				Severity: diag.Error,
 				Summary:  "Unable to create design doc",
-				Detail:   err.Error(),
+				Detail:   fmt.Sprintf("%s \nUrl: %s \nDesign Doc:- \n%s", err.Error(), url, body),
 			})
 			return diags
 		}
@@ -138,79 +151,86 @@ func DesignDocumentCreate(ctx context.Context, d *schema.ResourceData, meta inte
 }
 
 func DesignDocumentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	// Warning or errors can be collected in a slice type
 	var diags diag.Diagnostics
 
 	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	dbName := d.Get("database").(string)
-	db := client.DB(ctx, dbName)
-	if db.Err() != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Error,
-			Summary:  "Unable to connect to DB",
-			Detail:   db.Err().Error(),
+			Summary:  "Unable to connect to Server",
+			Detail:   err.Error(),
 		})
+		return diags
 	}
+	dbName := d.Get("database").(string)
+	db, dd := connectToDB(ctx, client, dbName)
+	if dd != nil {
+		diags = append(diags, *dd)
+		return diags
+	}
+
 	docId := fmt.Sprintf("_design/%s", d.Get("name").(string))
 
 	row := db.Get(ctx, docId)
 
-	var ddoc map[string]map[string]interface{}
-	if err = row.ScanDoc(&ddoc); err != nil {
+	var designDoc tdesignDoc
+	if err := row.ScanDoc(&designDoc); err != nil {
 		return diag.FromErr(err)
 	}
 
-	d.Set("language", ddoc["language"])
-	d.Set("view", ddoc["views"])
+	d.Set("language", designDoc.Language)
+
+	view := []map[string]string{}
+	v := map[string]string{
+		"name":   designDoc.View.Name,
+		"map":    designDoc.View.Map,
+		"reduce": designDoc.View.Reduce,
+	}
+	view = append(view, v)
+
+	d.Set("view", view)
 	d.Set("revision", row.Rev)
 
 	return diags
 }
 
 func DesignDocumentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	// Warning or errors can be collected in a slice type
 	var diags diag.Diagnostics
 
 	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return diag.FromErr(err)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to connect to Server",
+			Detail:   err.Error(),
+		})
+		return diags
 	}
 
 	dbName := d.Get("database").(string)
-	db := client.DB(ctx, dbName)
-	if db.Err() != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Unable to connect to DB",
-			Detail:   db.Err().Error(),
-		})
+	db, dd := connectToDB(ctx, client, dbName)
+	if dd != nil {
+		diags = append(diags, *dd)
+		return diags
 	}
 
 	if vs, ok := d.GetOk("view"); ok {
-
-		i := map[string]interface{}{}
-		ddoc := map[string]interface{}{
-			"_id":  d.Id(),
-			"_rev":  d.Get("revision").(string),
-			"views": i,
-			"language": d.Get("language").(string),
+		designDoc := tdesignDoc{
+			ID:       d.Id(),
+			Language: d.Get("language").(string),
+			View:     Tview{},
+			Rev:      d.Get("revision").(string),
 		}
 
 		views := vs.(*schema.Set)
 		for _, v := range views.List() {
 			view := v.(map[string]interface{})
-
-			i[view["name"].(string)] = map[string]interface{}{
-				"map": view["map"].(string),
-				"reduce": view["reduce"].(string),
-			}
+			designDoc.View.Name = view["name"].(string)
+			designDoc.View.Map = strings.ReplaceAll(view["map"].(string), "\n", "")
+			designDoc.View.Reduce = strings.ReplaceAll(view["reduce"].(string), "\n", "")
 		}
 
-		rev, err := db.Put(ctx, d.Id(), ddoc)
+		rev, err := db.Put(ctx, d.Id(), designDoc)
 		if err != nil {
 			diags = append(diags, diag.Diagnostic{
 				Severity: diag.Error,
@@ -232,17 +252,19 @@ func DesignDocumentDelete(ctx context.Context, d *schema.ResourceData, meta inte
 
 	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return diag.FromErr(err)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to connect to Server",
+			Detail:   err.Error(),
+		})
+		return diags
 	}
 
 	dbName := d.Get("database").(string)
-	db := client.DB(ctx, dbName)
-	if db.Err() != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Unable to connect to DB",
-			Detail:   db.Err().Error(),
-		})
+	db, dd := connectToDB(ctx, client, dbName)
+	if dd != nil {
+		diags = append(diags, *dd)
+		return diags
 	}
 	_, err = db.Delete(ctx, d.Id(), d.Get("revision").(string))
 
@@ -259,3 +281,15 @@ func DesignDocumentDelete(ctx context.Context, d *schema.ResourceData, meta inte
 	return diags
 }
 
+type tdesignDoc struct {
+	ID       string `json:"_id"`
+	Rev      string `json:"_rev,omitempty"`
+	View     Tview  `json:"view"`
+	Language string `json:"language"`
+}
+
+type Tview struct {
+	Map    string `json:"map"`
+	Reduce string `json:"reduce,omitempty"`
+	Name   string `json:"name"`
+}

@@ -63,9 +63,17 @@ func resourceDatabaseReplication() *schema.Resource {
 }
 
 func DatabaseReplicationCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	// Warning or errors can be collected in a slice type
+	var diags diag.Diagnostics
+
 	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return diag.FromErr(err)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to connect to Server",
+			Detail:   err.Error(),
+		})
+		return diags
 	}
 
 	options := kivik.Options{
@@ -90,7 +98,12 @@ func DatabaseReplicationRead(ctx context.Context, d *schema.ResourceData, meta i
 
 	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return diag.FromErr(err)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to connect to Server",
+			Detail:   err.Error(),
+		})
+		return diags
 	}
 
 	reps, err := client.GetReplications(ctx)
@@ -119,7 +132,12 @@ func DatabaseReplicationDelete(ctx context.Context, d *schema.ResourceData, meta
 
 	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return diag.FromErr(err)
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to connect to Server",
+			Detail:   err.Error(),
+		})
+		return diags
 	}
 
 	reps, err := client.GetReplications(ctx)

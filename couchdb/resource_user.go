@@ -51,17 +51,20 @@ func UserCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) d
 
 	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	db := client.DB(ctx, usersDB)
-	if db.Err() != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Error,
-			Summary:  "Unable to connect to DB",
-			Detail:   db.Err().Error(),
+			Summary:  "Unable to connect to Server",
+			Detail:   err.Error(),
 		})
+		return diags
 	}
+
+	db, dd := connectToDB(ctx, client, usersDB)
+	if dd != nil {
+		diags = append(diags, *dd)
+		return diags
+	}
+
 	user := &tuser{
 		ID:       kivik.UserPrefix + d.Id(),
 		Name:     d.Get("name").(string),
@@ -90,22 +93,25 @@ func UserRead(ctx context.Context, d *schema.ResourceData, meta interface{}) dia
 
 	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	db := client.DB(ctx, usersDB)
-	if db.Err() != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Error,
-			Summary:  "Unable to connect to DB",
-			Detail:   db.Err().Error(),
+			Summary:  "Unable to connect to Server",
+			Detail:   err.Error(),
 		})
+		return diags
 	}
+
+	db, dd := connectToDB(ctx, client, usersDB)
+	if dd != nil {
+		diags = append(diags, *dd)
+		return diags
+	}
+
 
 	row := db.Get(ctx, d.Id())
 
 	var user tuser
-	if err = row.ScanDoc(&user); err != nil {
+	if err := row.ScanDoc(&user); err != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Error,
 			Summary:  "Unable to read User",
@@ -126,16 +132,18 @@ func UserUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) d
 
 	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	db := client.DB(ctx, usersDB)
-	if db.Err() != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Error,
-			Summary:  "Unable to connect to DB",
-			Detail:   db.Err().Error(),
+			Summary:  "Unable to connect to Server",
+			Detail:   err.Error(),
 		})
+		return diags
+	}
+
+	db, dd := connectToDB(ctx, client, usersDB)
+	if dd != nil {
+		diags = append(diags, *dd)
+		return diags
 	}
 
 	user := &tuser{
@@ -166,16 +174,18 @@ func UserDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) d
 
 	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	db := client.DB(ctx, usersDB)
-	if db.Err() != nil {
 		diags = append(diags, diag.Diagnostic{
 			Severity: diag.Error,
-			Summary:  "Unable to connect to DB",
-			Detail:   db.Err().Error(),
+			Summary:  "Unable to connect to Server",
+			Detail:   err.Error(),
 		})
+		return diags
+	}
+
+	db, dd := connectToDB(ctx, client, usersDB)
+	if dd != nil {
+		diags = append(diags, *dd)
+		return diags
 	}
 
 	_, err = db.Delete(ctx, d.Id(), d.Get("revision").(string))

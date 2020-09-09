@@ -16,6 +16,7 @@ resource "couchdb_database" "db1" {
   name = "example"
 }
 
+
 resource "couchdb_database_design_document" "test" {
   database = "example"
   name = "types"
