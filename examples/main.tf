@@ -1,7 +1,7 @@
 terraform {
   required_providers {
     couchdb = {
-      source = "hashicorp.com/RossMerr/couchdb"
+      source = "github.com/RossMerr/couchdb"
     }
   }
 }

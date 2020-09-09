@@ -32,6 +32,18 @@ $ go install
 If you're building the provider, follow the instructions to [install it as a plugin.](https://www.terraform.io/docs/plugins/basics.html#installing-a-plugin)
 After placing it into your plugins directory, run `terraform init` to initialize it.
 
+Or run the `make install` and you can reference the provider locally using 
+
+```
+terraform {
+  required_providers {
+    couchdb = {
+      source = "github.com/RossMerr/couchdb"
+    }
+  }
+}
+``` 
+
 ### Configuring the provider
 
 ```
