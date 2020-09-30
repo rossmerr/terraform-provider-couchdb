@@ -88,6 +88,8 @@ func DocumentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{
 		options["batch"] = true
 	}
 
+	doc["_rev"] = d.Get("revision").(string)
+
 	rev, err := db.Put(ctx, docId, doc, options)
 	if err != nil {
 		diags = append(diags, diag.Diagnostic{
