@@ -62,10 +62,10 @@ func testAccCouchDBUserWorks(endpoint, username, password, expectedRole string) 
 	}
 
 	if sess.Name != username {
-		return fmt.Errorf("Expected user %s, but got %s", username, sess.Name)
+		return fmt.Errorf("expected user %s, but got %s", username, sess.Name)
 	}
 	if sess.Roles[0] != expectedRole {
-		return fmt.Errorf("Expected user role %s, but got %s", expectedRole, sess.Roles)
+		return fmt.Errorf("expected user role %s, but got %s", expectedRole, sess.Roles)
 	}
 	return nil
 }

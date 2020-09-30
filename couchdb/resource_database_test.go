@@ -43,7 +43,7 @@ func testAccCouchDBDatabaseExists(n string) resource.TestCheckFunc {
 		rs, ok := s.RootModule().Resources[n]
 
 		if !ok {
-			return fmt.Errorf("Not found: %s", n)
+			return fmt.Errorf("not found: %s", n)
 		}
 
 		if rs.Primary.ID == "" {
@@ -60,7 +60,7 @@ func testAccCouchDBDatabaseExists(n string) resource.TestCheckFunc {
 		}
 
 		if !ok {
-			return fmt.Errorf("Record not found")
+			return fmt.Errorf("record not found")
 		}
 
 		return nil
@@ -72,7 +72,7 @@ func testAccCouchDBDatabaseSecurity(n string) resource.TestCheckFunc {
 		rs, ok := s.RootModule().Resources[n]
 
 		if !ok {
-			return fmt.Errorf("Not found: %s", n)
+			return fmt.Errorf("not found: %s", n)
 		}
 
 		if rs.Primary.ID == "" {
@@ -92,16 +92,16 @@ func testAccCouchDBDatabaseSecurity(n string) resource.TestCheckFunc {
 		}
 
 		if rs.Primary.Attributes["security.0.members.#"] != strconv.Itoa(len(sec.Members.Names)) {
-			return fmt.Errorf("Expected %d members, got %s", len(sec.Members.Names), rs.Primary.Attributes["security.0.members.#"])
+			return fmt.Errorf("expected %d members, got %s", len(sec.Members.Names), rs.Primary.Attributes["security.0.members.#"])
 		}
 		if rs.Primary.Attributes["security.0.member_roles.#"] != strconv.Itoa(len(sec.Members.Roles)) {
-			return fmt.Errorf("Expected %d member roles, got %s", len(sec.Members.Roles), rs.Primary.Attributes["security.0.member_roles.#"])
+			return fmt.Errorf("expected %d member roles, got %s", len(sec.Members.Roles), rs.Primary.Attributes["security.0.member_roles.#"])
 		}
 		if rs.Primary.Attributes["security.0.admins.#"] != strconv.Itoa(len(sec.Admins.Names)) {
-			return fmt.Errorf("Expected %d admins, got %s", len(sec.Admins.Names), rs.Primary.Attributes["security.0.admins.#"])
+			return fmt.Errorf("expected %d admins, got %s", len(sec.Admins.Names), rs.Primary.Attributes["security.0.admins.#"])
 		}
 		if rs.Primary.Attributes["security.0.admin_roles.#"] != strconv.Itoa(len(sec.Admins.Roles)) {
-			return fmt.Errorf("Expected %d admin roles, got %s", len(sec.Admins.Roles), rs.Primary.Attributes["security.0.admin_roles.#"])
+			return fmt.Errorf("expected %d admin roles, got %s", len(sec.Admins.Roles), rs.Primary.Attributes["security.0.admin_roles.#"])
 		}
 		return nil
 	}
@@ -150,4 +150,4 @@ resource "couchdb_database" "test" {
 		shards   = 6
 		replicas = 2
 	}
-}
+}`

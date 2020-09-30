@@ -3,38 +3,30 @@ package couchdb
 import (
 	"context"
 	"fmt"
-	"net/http"
-	"testing"
-
 	"github.com/go-kivik/kivik/v3"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-
+	"net/http"
+	"testing"
 )
 
-func TestAccCouchDBDesignDocument_basic(t *testing.T) {
+func TestAccCouchDBDocument(t *testing.T) {
 	resource.Test(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
 		Providers:    testAccProviders,
-		CheckDestroy: testAccCouchDBDesignDocumentDestroy,
+		CheckDestroy: testAccCouchDBDocumentDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccCouchDBDesignDocument,
+				Config: testAccCouchDBDocument,
 				Check: resource.ComposeTestCheckFunc(
-					testAccCouchDBDesignDocumentExists("couchdb_database_design_document.test"),
-				),
-			},
-			{
-				Config: testAccCouchDBDesignDocument_update,
-				Check: resource.ComposeTestCheckFunc(
-					testAccCouchDBDesignDocumentExists("couchdb_database_design_document.test"),
+					testAccCouchDBDocumentExists("couchdb_document.test"),
 				),
 			},
 		},
 	})
 }
 
-func testAccCouchDBDesignDocumentExists(n string) resource.TestCheckFunc {
+func testAccCouchDBDocumentExists(n string) resource.TestCheckFunc {
 	return func(s *terraform.State) error {
 		rs, ok := s.RootModule().Resources[n]
 
@@ -43,9 +35,8 @@ func testAccCouchDBDesignDocumentExists(n string) resource.TestCheckFunc {
 		}
 
 		if rs.Primary.ID == "" {
-			return fmt.Errorf("database design document ID is not set")
+			return fmt.Errorf("document ID is not set")
 		}
-
 
 		client, err := connectToCouchDB(context.Background(), testAccProvider.Meta().(*CouchDBConfiguration))
 		if err != nil {
@@ -59,11 +50,13 @@ func testAccCouchDBDesignDocumentExists(n string) resource.TestCheckFunc {
 			return row.Err
 		}
 
+
+
 		return nil
 	}
 }
 
-func testAccCouchDBDesignDocumentDestroy(s *terraform.State) error {
+func testAccCouchDBDocumentDestroy(s *terraform.State) error {
 	for _, rs := range s.RootModule().Resources {
 		if rs.Type != "couchdb" {
 			continue
@@ -91,33 +84,21 @@ func testAccCouchDBDesignDocumentDestroy(s *terraform.State) error {
 	return nil
 }
 
-var testAccCouchDBDesignDocument = `
+var testAccCouchDBDocument = `
 resource "couchdb_database" "test" {
 	name = "test"
 }
-resource "couchdb_database_design_document" "test" {
+resource "couchdb_document" "test" {
 	database = "${couchdb_database.test.name}"
-	name = "test"
-	view {
-		name = "test"
-		map = "function(doc) { emit(doc._id, doc); }"
+	doc = <<EOF
+	{
+		"description": "An Italian-American dish that usually consists of spaghetti, tomato sauce and meatballs.",
+		"ingredients": [
+			"spaghetti",
+			"tomato sauce",
+			"meatballs"
+		],
+		"name": "Spaghetti with meatballs"
 	}
-}
-`
-var testAccCouchDBDesignDocument_update = `
-resource "couchdb_database" "test" {
-	name = "test"
-}
-resource "couchdb_database_design_document" "test" {
-	database = "${couchdb_database.test.name}"
-	name = "test"
-	view {
-		name = "cat"
-		map = "function(doc) { emit(doc._id, doc); }"
-	}
-	view {
-		name = "test"
-		map = "function(doc) { emit(doc._id, doc); }"
-	}
-}
-`
+EOF
+}`

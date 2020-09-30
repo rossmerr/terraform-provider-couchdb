@@ -60,7 +60,7 @@ func Provider() *schema.Provider {
 			"couchdb_database":                 resourceDatabase(),
 			"couchdb_database_replication":     resourceDatabaseReplication(),
 			"couchdb_user":                     resourceUser(),
-			//"couchdb_document":                 resourceDocument(),
+			"couchdb_document":                 resourceDocument(),
 			"couchdb_database_design_document": resourceDesignDocument(),
 		},
 		ConfigureContextFunc: providerConfigure,
@@ -150,7 +150,7 @@ func connectToDB(ctx context.Context, client *kivik.Client, dbName string) (*kiv
 		return nil, &diag.Diagnostic{
 			Severity: diag.Error,
 			Summary:  "Unable to connect to DB Stats",
-			Detail:   fmt.Sprintf("Could not connect to server: %s", retryError, dbName),
+			Detail:   fmt.Sprintf("Could not connect to server: %s %s", retryError, dbName),
 		}
 	}
 
