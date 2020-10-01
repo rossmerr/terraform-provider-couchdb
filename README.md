@@ -48,29 +48,32 @@ terraform {
 
 ```
 provider "couchdb" {
-   endpoint = "http://localhost:5984"
-   name = "jenny"
-   password = "secret" 
- }
+    endpoint = "http://localhost:5984"
+    name = "jenny"
+    password = "secret" 
+}
  
 resource "couchdb_database" "db1" {
-  name = "example"
+    name = "example"
 }
 
 resource "couchdb_database_replication" "db2db" {
-  name = "example"
-  source = "${couchdb_database.db1.name}"
-  target = "example-clone"
-  create_target = true
-  continuous = true
+    name = "example"
+    source = "${couchdb_database.db1.name}"
+    target = "example-clone"
+    create_target = true
+    continuous = true
 }
 
 resource "couchdb_database_design_document" "test" {
-	database = "${couchdb_database.db1.name}"
-	name = "types"
-	view = {
-		name = "people"
-		map = "function(doc) { if (doc.type == 'person') { emit(doc); } }"
-	}
+    database = "${couchdb_database.db1.name}"
+    name = "types"
+    view = <<EOF
+    {
+        "name" : "people",
+        "map" : "function(doc) { if (doc.type == 'person') { emit(doc); } }",
+        "reduce": ""
+    }
+    EOF
 }
 ```
