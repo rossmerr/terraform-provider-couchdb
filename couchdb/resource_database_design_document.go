@@ -77,11 +77,10 @@ func designDocumentCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	rev, err := db.Put(ctx, docId, doc)
 	if err != nil {
-		return AppendDiagnostic(diags, fmt.Errorf("%s \nDesign Doc:- \n%s", err.Error(),  d.Get("view").(string)), "Unable to create design doc")
+		return AppendDiagnostic(diags, fmt.Errorf("%s \nDesign Doc:- \n%s", err.Error(), d.Get("view").(string)), "Unable to create design doc")
 	}
 
 	d.Set("revision", rev)
-
 
 	d.SetId(docId)
 
@@ -154,7 +153,7 @@ func designDocumentUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	rev, err := db.Put(ctx, d.Id(), doc)
 	if err != nil {
-		return AppendDiagnostic(diags, fmt.Errorf("%s \nDesign Doc:- \n%s", err.Error(),  d.Get("view").(string)), "Unable to update design doc")
+		return AppendDiagnostic(diags, fmt.Errorf("%s \nDesign Doc:- \n%s", err.Error(), d.Get("view").(string)), "Unable to update design doc")
 	}
 
 	d.Set("revision", rev)
@@ -178,7 +177,7 @@ func designDocumentDelete(ctx context.Context, d *schema.ResourceData, meta inte
 	rev, err := db.Delete(ctx, d.Id(), d.Get("revision").(string))
 
 	if err != nil {
-		return AppendDiagnostic(diags, fmt.Errorf("docID: %s \nrev: %s \n%s", d.Id(), d.Get("revision").(string),  err.Error()), "Unable to delete design doc")
+		return AppendDiagnostic(diags, fmt.Errorf("docID: %s \nrev: %s \n%s", d.Id(), d.Get("revision").(string), err.Error()), "Unable to delete design doc")
 	}
 
 	d.SetId("")

@@ -67,7 +67,7 @@ func documentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{
 	err := json.Unmarshal([]byte(d.Get("doc").(string)), &doc)
 
 	if err != nil {
-		AppendDiagnostic(diags, err,  "Unable to unmarshal JSON")
+		AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
 	}
 
 	options := kivik.Options{}
@@ -79,13 +79,12 @@ func documentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{
 
 	rev, err := db.Put(ctx, docId, doc, options)
 	if err != nil {
-		AppendDiagnostic(diags, err,  "Unable to update Document")
+		AppendDiagnostic(diags, err, "Unable to update Document")
 	}
 	d.Set("revision", rev)
 
 	return documentRead(ctx, d, meta)
 }
-
 
 func documentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
 	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
@@ -106,7 +105,7 @@ func documentDelete(ctx context.Context, d *schema.ResourceData, meta interface{
 	rev, err := db.Delete(ctx, d.Id(), rev)
 
 	if err != nil {
-		AppendDiagnostic(diags, err,  "Unable to delete Document")
+		AppendDiagnostic(diags, err, "Unable to delete Document")
 	}
 
 	d.SetId("")
@@ -131,10 +130,10 @@ func documentRead(ctx context.Context, d *schema.ResourceData, meta interface{})
 
 	row := db.Get(ctx, d.Id())
 
-	var doc  map[string]interface{}
+	var doc map[string]interface{}
 
 	if err := row.ScanDoc(&doc); err != nil {
-		AppendDiagnostic(diags, err,  "Unable to read Document")
+		AppendDiagnostic(diags, err, "Unable to read Document")
 	}
 
 	d.Set("revision", row.Rev)
@@ -142,7 +141,7 @@ func documentRead(ctx context.Context, d *schema.ResourceData, meta interface{})
 	raw, err := json.Marshal(doc)
 
 	if err != nil {
-		AppendDiagnostic(diags, err,  "Unable to marshal JSON")
+		AppendDiagnostic(diags, err, "Unable to marshal JSON")
 	}
 
 	d.Set("doc", raw)

@@ -69,10 +69,10 @@ func databaseReplicationCreate(ctx context.Context, d *schema.ResourceData, meta
 	}
 
 	options := kivik.Options{
-		"id": d.Get("name").(string),
-		"create_target" : d.Get("create_target").(bool),
-		"continuous": d.Get("continuous").(bool),
-		"filter": d.Get("filter").(string),
+		"id":            d.Get("name").(string),
+		"create_target": d.Get("create_target").(bool),
+		"continuous":    d.Get("continuous").(bool),
+		"filter":        d.Get("filter").(string),
 	}
 
 	rep, err := client.Replicate(ctx, d.Get("target").(string), d.Get("source").(string), options)
@@ -108,7 +108,6 @@ func databaseReplicationRead(ctx context.Context, d *schema.ResourceData, meta i
 
 	return diags
 }
-
 
 func databaseReplicationDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
 	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))

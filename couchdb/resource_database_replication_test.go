@@ -13,9 +13,9 @@ import (
 
 func TestAccCouchDBDatabaseReplication_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCouchDBDatabaseReplicationDestroy,
+		PreCheck:          func() { testAccPreCheck(t) },
+		ProviderFactories: testProviderFactories,
+		CheckDestroy:      testAccCouchDBDatabaseReplicationDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccCouchDBDatabaseReplication,

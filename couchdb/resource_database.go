@@ -30,7 +30,7 @@ func resourceDatabase() *schema.Resource {
 				Type:        schema.TypeBool,
 				Optional:    true,
 				Default:     false,
-				ForceNew: 	 true,
+				ForceNew:    true,
 				Description: "Whether to create a partitioned database",
 			},
 			"security": {
@@ -146,7 +146,6 @@ func createDatabase(ctx context.Context, d *schema.ResourceData, meta interface{
 		}
 	}
 
-
 	return readDatabase(ctx, d, meta)
 }
 
@@ -186,7 +185,6 @@ func updateDatabase(ctx context.Context, d *schema.ResourceData, meta interface{
 		}
 	}
 
-
 	return readDatabase(ctx, d, meta)
 }
 
@@ -197,14 +195,14 @@ func readDatabase(ctx context.Context, d *schema.ResourceData, meta interface{})
 	}
 
 	dbName := d.Id()
-	dbStates, err := client.DBsStats(ctx, []string{dbName} )
+	dbStates, err := client.DBsStats(ctx, []string{dbName})
 	if err != nil {
 		return AppendDiagnostic(diags, err, "Unable to read DB states")
 	}
 
 	if len(dbStates) > 0 {
 		state := dbStates[0]
-		d.Set("document_count",  strconv.FormatInt(state.DocCount, 16))
+		d.Set("document_count", strconv.FormatInt(state.DocCount, 16))
 		d.Set("document_deletion_count", strconv.FormatInt(state.DeletedCount, 16))
 		d.Set("disk_size", strconv.FormatInt(state.DiskSize, 16))
 		d.Set("data_size", strconv.FormatInt(state.ActiveSize, 16))
@@ -259,17 +257,17 @@ func deleteDatabase(ctx context.Context, d *schema.ResourceData, meta interface{
 		return diags
 	}
 
-	return AppendDiagnostic(diags, fmt.Errorf("dbName: %s \n%s", dbName,  err.Error()), "Unable to delete DB")
+	return AppendDiagnostic(diags, fmt.Errorf("dbName: %s \n%s", dbName, err.Error()), "Unable to delete DB")
 }
 
-func extractClusterOptions(v interface{}) (kivik.Options) {
+func extractClusterOptions(v interface{}) kivik.Options {
 	ret := kivik.Options{}
 	vs := v.([]interface{})
 	if len(vs) != 1 {
 		return ret
 	}
 	vi := vs[0].(map[string]interface{})
-	ret["replicas"]= vi["replicas"].(int)
+	ret["replicas"] = vi["replicas"].(int)
 	ret["shards"] = vi["shards"].(int)
 	return ret
 }

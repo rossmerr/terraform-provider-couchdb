@@ -13,9 +13,9 @@ import (
 
 func TestAccCouchDBUser_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCouchDBUserDestroy,
+		PreCheck:          func() { testAccPreCheck(t) },
+		ProviderFactories: testProviderFactories,
+		CheckDestroy:      testAccCouchDBUserDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccCouchDBUser,

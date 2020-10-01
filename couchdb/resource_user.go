@@ -102,8 +102,6 @@ func userRead(ctx context.Context, d *schema.ResourceData, meta interface{}) (di
 	return diags
 }
 
-
-
 func userUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
 	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if dd != nil {
@@ -147,7 +145,7 @@ func userDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) (
 
 	_, err := db.Delete(ctx, d.Id(), d.Get("revision").(string))
 	if err != nil {
-		return AppendDiagnostic(diags, fmt.Errorf("docID: %s \nrev: %s \n%s", d.Id(), d.Get("revision").(string),  err.Error()), "Unable to delete User")
+		return AppendDiagnostic(diags, fmt.Errorf("docID: %s \nrev: %s \n%s", d.Id(), d.Get("revision").(string), err.Error()), "Unable to delete User")
 	}
 	d.SetId("")
 

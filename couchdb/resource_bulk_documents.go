@@ -65,13 +65,11 @@ func bulkDocumentsUpdate(ctx context.Context, d *schema.ResourceData, meta inter
 		docs[i] = doc
 	}
 
-
 	row, err := db.BulkDocs(ctx, docs)
 	if err != nil {
 		return AppendDiagnostic(diags, err, "Unable to bulk update documents")
 	}
 	defer row.Close()
-
 
 	if ok := row.Next(); ok {
 		if row.UpdateErr() != nil {
@@ -174,7 +172,7 @@ func bulkDocumentsRead(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	for id, _ := range revisions {
 		ref := kivik.BulkGetReference{
-			ID:  id,
+			ID: id,
 		}
 		bulkRev = append(bulkRev, ref)
 	}
@@ -256,7 +254,6 @@ func bulkDocumentsCreate(ctx context.Context, d *schema.ResourceData, meta inter
 			revisions[row.ID()] = row.Rev()
 		}
 	}
-
 
 	byt, err := json.Marshal(revisions)
 	if err != nil {

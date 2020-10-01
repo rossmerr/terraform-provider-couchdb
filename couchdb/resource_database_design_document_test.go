@@ -9,14 +9,13 @@ import (
 	"github.com/go-kivik/kivik/v3"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-
 )
 
 func TestAccCouchDBDesignDocument_basic(t *testing.T) {
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCouchDBDesignDocumentDestroy,
+		PreCheck:          func() { testAccPreCheck(t) },
+		ProviderFactories: testProviderFactories,
+		CheckDestroy:      testAccCouchDBDesignDocumentDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccCouchDBDesignDocument,
@@ -45,7 +44,6 @@ func testAccCouchDBDesignDocumentExists(n string) resource.TestCheckFunc {
 		if rs.Primary.ID == "" {
 			return fmt.Errorf("database design document ID is not set")
 		}
-
 
 		client, dd := connectToCouchDB(context.Background(), testAccProvider.Meta().(*CouchDBConfiguration))
 		if dd != nil {

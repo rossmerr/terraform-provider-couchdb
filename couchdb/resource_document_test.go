@@ -12,9 +12,9 @@ import (
 
 func TestAccCouchDBDocument(t *testing.T) {
 	resource.Test(t, resource.TestCase{
-		PreCheck:     func() { testAccPreCheck(t) },
-		Providers:    testAccProviders,
-		CheckDestroy: testAccCouchDBDocumentDestroy,
+		PreCheck:          func() { testAccPreCheck(t) },
+		ProviderFactories: testProviderFactories,
+		CheckDestroy:      testAccCouchDBDocumentDestroy,
 		Steps: []resource.TestStep{
 			{
 				Config: testAccCouchDBDocument,
@@ -49,8 +49,6 @@ func testAccCouchDBDocumentExists(n string) resource.TestCheckFunc {
 		if row.Err != nil {
 			return row.Err
 		}
-
-
 
 		return nil
 	}

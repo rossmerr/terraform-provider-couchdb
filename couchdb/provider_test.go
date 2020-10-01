@@ -12,13 +12,17 @@ import (
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
 
-var testAccProviders map[string]*schema.Provider
+var testProviderFactories map[string]func() (*schema.Provider, error)
+
 var testAccProvider *schema.Provider
 
 func init() {
 	testAccProvider = Provider()
-	testAccProviders = map[string]*schema.Provider{
-		"couchdb": testAccProvider,
+
+	testProviderFactories = map[string]func() (*schema.Provider, error){
+		"couchdb": func() (*schema.Provider, error) {
+			return Provider(), nil
+		},
 	}
 }
 
@@ -56,7 +60,7 @@ func testAccCouchDBUserWorks(endpoint, username, password, expectedRole string) 
 		return err
 	}
 
-	sess, err :=  client.Session(context.Background())
+	sess, err := client.Session(context.Background())
 	if err != nil {
 		return err
 	}

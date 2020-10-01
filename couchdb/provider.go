@@ -21,7 +21,6 @@ type CouchDBConfiguration struct {
 	MaxOpenConns    int
 }
 
-
 func Provider() *schema.Provider {
 	return &schema.Provider{
 		Schema: map[string]*schema.Schema{
@@ -72,13 +71,13 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	var diags diag.Diagnostics
 
 	return &CouchDBConfiguration{
-		Endpoint:        d.Get("endpoint").(string),
-		Username:        d.Get("username").(string),
-		Password:        d.Get("password").(string),
+		Endpoint: d.Get("endpoint").(string),
+		Username: d.Get("username").(string),
+		Password: d.Get("password").(string),
 	}, diags
 }
 
-func connectToCouchDB(ctx context.Context, conf *CouchDBConfiguration) (*kivik.Client, *diag.Diagnostic){
+func connectToCouchDB(ctx context.Context, conf *CouchDBConfiguration) (*kivik.Client, *diag.Diagnostic) {
 	var client *kivik.Client
 	var err error
 	// When provisioning a database server there can often be a lag between
