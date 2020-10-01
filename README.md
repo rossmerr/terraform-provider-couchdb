@@ -59,14 +59,14 @@ resource "couchdb_database" "db1" {
 
 resource "couchdb_database_replication" "db2db" {
     name = "example"
-    source = "${couchdb_database.db1.name}"
+    source = couchdb_database.db1.name
     target = "example-clone"
     create_target = true
     continuous = true
 }
 
 resource "couchdb_database_design_document" "test" {
-    database = "${couchdb_database.db1.name}"
+    database = couchdb_database.db1.name
     name = "types"
     view = <<EOF
     {
