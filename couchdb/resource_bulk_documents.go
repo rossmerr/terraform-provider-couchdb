@@ -1,12 +1,12 @@
 package couchdb
 
 import (
-"context"
-"encoding/json"
-"github.com/go-kivik/kivik/v3"
-"github.com/google/uuid"
-"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"context"
+	"encoding/json"
+	"fmt"
+	"github.com/go-kivik/kivik/v3"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 func resourceBulkDocuments() *schema.Resource {
@@ -23,16 +23,10 @@ func resourceBulkDocuments() *schema.Resource {
 				ForceNew:    true,
 				Description: "Database to associate design with",
 			},
-			"new_edits": {
-				Type:        schema.TypeBool,
-				Optional: true,
-				Default: true,
-				Description: "If false, prevents the database from assigning them new revision IDs. Default is true. Optional",
-			},
 			"docs": {
 				Type:        schema.TypeString,
 				Required:    true,
-				Description: "JSON Document (wrap in <<EOF { } EOF)",
+				Description: "JSON Document, the _id field is required (wrap in <<EOF { } EOF)",
 			},
 		},
 	}
@@ -50,31 +44,52 @@ func bulkDocumentsUpdate(ctx context.Context, d *schema.ResourceData, meta inter
 	if dd != nil {
 		return append(diags, *dd)
 	}
+	defer db.Close(ctx)
 
-	docId := d.Id()
-	doc := map[string]interface{}{}
-	err := json.Unmarshal([]byte(d.Get("doc").(string)), &doc)
-
+	var revisions map[string]string
+	err := json.Unmarshal([]byte(d.Id()), &revisions)
 	if err != nil {
 		return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
 	}
 
-	options := kivik.Options{}
-	if d.Get("batch").(bool) {
-		options["batch"] = true
-	}
-
-	doc["_rev"] = d.Get("revision").(string)
-
-	rev, err := db.Put(ctx, docId, doc, options)
+	var docs []interface{}
+	err = json.Unmarshal([]byte(d.Get("docs").(string)), &docs)
 	if err != nil {
-		return AppendDiagnostic(diags, err, "Unable to update Document")
+		return AppendDiagnostic(diags, err, "Unable to unmarshal docs JSON")
 	}
-	d.Set("revision", rev)
 
-	return bulkDocumentsRead(ctx, d, meta)
+	for i, raw := range docs {
+		doc := raw.(map[string]interface{})
+		id := doc["_id"].(string)
+		doc["_rev"] = revisions[id]
+		docs[i] = doc
+	}
+
+
+	row, err := db.BulkDocs(ctx, docs)
+	if err != nil {
+		return AppendDiagnostic(diags, err, "Unable to bulk update documents")
+	}
+	defer row.Close()
+
+
+	if ok := row.Next(); ok {
+		if row.UpdateErr() != nil {
+			AppendDiagnostic(diags, row.UpdateErr(), "Unable to update/read Document")
+		} else {
+			revisions[row.ID()] = row.Rev()
+		}
+	}
+
+	byt, err := json.Marshal(revisions)
+	if err != nil {
+		return AppendDiagnostic(diags, err, "Unable to marshal JSON")
+	}
+
+	d.SetId(string(byt))
+
+	return
 }
-
 
 func bulkDocumentsDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
 	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
@@ -88,26 +103,54 @@ func bulkDocumentsDelete(ctx context.Context, d *schema.ResourceData, meta inter
 	if dd != nil {
 		return append(diags, *dd)
 	}
+	defer db.Close(ctx)
 
-	rev := d.Get("revision").(string)
-
-	rev, err := db.Delete(ctx, d.Id(), rev)
-
+	var revisions map[string]string
+	err := json.Unmarshal([]byte(d.Id()), &revisions)
 	if err != nil {
-		return AppendDiagnostic(diags, err, "Unable to delete Document")
+		return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
 	}
 
-	d.Set("revision", rev)
+	var docs []interface{}
+	for id, rev := range revisions {
+		doc := map[string]interface{}{}
+		doc["_id"] = id
+		doc["_rev"] = rev
+		doc["_deleted"] = true
+		docs = append(docs, doc)
+	}
 
-	return diags
+	row, err := db.BulkDocs(ctx, docs)
+	if err != nil {
+		return AppendDiagnostic(diags, err, "Unable to bulk delete documents")
+	}
+	defer row.Close()
+
+	if ok := row.Next(); ok {
+		if row.UpdateErr() != nil {
+			AppendDiagnosticWarning(diags, row.UpdateErr(), fmt.Sprintf("Unable to delete document: %s", row.ID()))
+		}
+
+		delete(revisions, row.ID())
+	}
+
+	byt, err := json.Marshal(revisions)
+	if err != nil {
+		return AppendDiagnostic(diags, err, "Unable to marshal JSON")
+	}
+
+	d.SetId(string(byt))
+
+	return
 }
 
-func bulkDocumentsRead(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
+func bulkDocumentsRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	diags := diag.Diagnostics{}
+
 	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if dd != nil {
 		return append(diags, *dd)
 	}
-
 
 	dbName := d.Get("database").(string)
 
@@ -115,24 +158,57 @@ func bulkDocumentsRead(ctx context.Context, d *schema.ResourceData, meta interfa
 	if dd != nil {
 		return append(diags, *dd)
 	}
+	defer db.Close(ctx)
 
-	row := db.Get(ctx, d.Id())
+	var bulkRev []kivik.BulkGetReference
 
-	var doc  map[string]interface{}
+	//revisions := strings.Split(d.Get("revisions").(string), ",")
+	//ids := strings.Split(d.Id(), ",")
 
-	if err := row.ScanDoc(&doc); err != nil {
-		return AppendDiagnostic(diags, err, "Unable to read Document")
+	var revisions map[string]string
+	err := json.Unmarshal([]byte(d.Id()), &revisions)
+
+	if err != nil {
+		return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
 	}
 
-	d.Set("revision", row.Rev)
+	for id, _ := range revisions {
+		ref := kivik.BulkGetReference{
+			ID:  id,
+		}
+		bulkRev = append(bulkRev, ref)
+	}
 
-	raw, err := json.Marshal(doc)
+	rows, err := db.BulkGet(ctx, bulkRev)
+	if err != nil {
+		return AppendDiagnostic(diags, err, "Unable to read documents")
+	}
+	defer rows.Close()
 
+	if rows.Err() != nil {
+		diags = append(diags, diag.Diagnostic{
+			Severity: diag.Warning,
+			Summary:  rows.Err().Error(),
+		})
+	}
+
+	revisions = map[string]string{}
+	if ok := rows.Next(); ok {
+
+		var raw map[string]interface{}
+		if err := rows.ScanDoc(&raw); err == nil {
+			revisions[rows.ID()] = raw["_rev"].(string)
+		} else {
+			return AppendDiagnostic(diags, err, fmt.Sprintf("Unable to read document: %s", rows.ID()))
+		}
+	}
+
+	byt, err := json.Marshal(revisions)
 	if err != nil {
 		return AppendDiagnostic(diags, err, "Unable to marshal JSON")
 	}
 
-	d.Set("doc", raw)
+	d.SetId(string(byt))
 
 	return diags
 }
@@ -149,30 +225,45 @@ func bulkDocumentsCreate(ctx context.Context, d *schema.ResourceData, meta inter
 	if dd != nil {
 		return append(diags, *dd)
 	}
+	defer db.Close(ctx)
 
-	docId := d.Get("docid").(string)
-	if docId == "" {
-		docId = uuid.New().String()
-	}
-
-	doc := map[string]interface{}{}
-	err := json.Unmarshal([]byte(d.Get("doc").(string)), &doc)
+	var docs []interface{}
+	err := json.Unmarshal([]byte(d.Get("docs").(string)), &docs)
 
 	if err != nil {
 		return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
 	}
 
-	options := kivik.Options{}
-	if d.Get("batch").(bool) {
-		options["batch"] = true
+	for i, raw := range docs {
+		doc := raw.(map[string]interface{})
+		if _, ok := doc["_id"]; !ok {
+			return AppendDiagnostic(diags, fmt.Errorf("doc no %d missing _id field for change tracking", i), "_id field required on each document")
+		}
 	}
 
-	rev, err := db.Put(ctx, docId, doc, options)
+	row, err := db.BulkDocs(ctx, docs)
 	if err != nil {
-		return AppendDiagnostic(diags, err, "Unable to create Document")
+		return AppendDiagnostic(diags, err, "Unable to bulk create documents")
 	}
-	d.Set("revision", rev)
-	d.SetId(docId)
+	defer row.Close()
 
-	return bulkDocumentsRead(ctx, d, meta)
+	revisions := map[string]string{}
+
+	if ok := row.Next(); ok {
+		if row.UpdateErr() != nil {
+			AppendDiagnosticWarning(diags, row.UpdateErr(), fmt.Sprintf("Unable to read document: %s", row.ID()))
+		} else {
+			revisions[row.ID()] = row.Rev()
+		}
+	}
+
+
+	byt, err := json.Marshal(revisions)
+	if err != nil {
+		return AppendDiagnostic(diags, err, "Unable to marshal JSON")
+	}
+
+	d.SetId(string(byt))
+
+	return
 }

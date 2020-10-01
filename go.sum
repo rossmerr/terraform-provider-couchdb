@@ -144,6 +144,8 @@ github.com/go-kivik/couchdb v1.8.1 h1:2yjmysS48JYpyWTkx2E3c7ASZP8Kh0eABWnkKlV8bb
 github.com/go-kivik/couchdb v2.0.0+incompatible h1:DsXVuGJTng04Guz8tg7jGVQ53RlByEhk+gPB/1yo3Oo=
 github.com/go-kivik/couchdb/v3 v3.2.0 h1:B7VimmmjpmF2hlCBT1r99/wNGOY0Tq7zQHUrNXZdJl0=
 github.com/go-kivik/couchdb/v3 v3.2.0/go.mod h1:CM45FyvssL8nyJJRGUFVeqSD31BZ3vUGhyvhopfxzGM=
+github.com/go-kivik/couchdb/v3 v3.2.1 h1:kLdn0coF5fN2/9c8PQ9sqLFldgxnHgKStfdrojMlAaM=
+github.com/go-kivik/couchdb/v3 v3.2.1/go.mod h1:CM45FyvssL8nyJJRGUFVeqSD31BZ3vUGhyvhopfxzGM=
 github.com/go-kivik/kivik v1.8.1 h1:GScP1mS5wP2km2awszvKzPEjC21lYjQGr3GY+4a/o2U=
 github.com/go-kivik/kivik v2.0.0+incompatible h1:/7hgr29DKv/vlaJsUoyRlOFq0K+3ikz0wTbu+cIs7QY=
 github.com/go-kivik/kivik/v3 v3.0.1/go.mod h1:7tmQDvkta/pcijpUjLMsQ9HJUELiKD5zm6jQ3Gb9cxE=

@@ -98,10 +98,12 @@ resource "couchdb_database" "test" {
 resource "couchdb_database_design_document" "test" {
 	database = "${couchdb_database.test.name}"
 	name = "test"
-	view {
-		name = "test"
-		map = "function(doc) { emit(doc._id, doc); }"
+	view = <<EOF
+	{
+		"name": "test",
+		"map": "function(doc) { emit(doc._id, doc); }"
 	}
+EOF
 }
 `
 var testAccCouchDBDesignDocument_update = `
@@ -111,13 +113,11 @@ resource "couchdb_database" "test" {
 resource "couchdb_database_design_document" "test" {
 	database = "${couchdb_database.test.name}"
 	name = "test"
-	view {
-		name = "cat"
-		map = "function(doc) { emit(doc._id, doc); }"
+	view = <<EOF
+	{
+		"name": "cat",
+		"map" : "function(doc) { emit(doc._id, doc); }"
 	}
-	view {
-		name = "test"
-		map = "function(doc) { emit(doc._id, doc); }"
-	}
+EOF
 }
 `

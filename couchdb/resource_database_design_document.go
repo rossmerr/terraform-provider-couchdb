@@ -2,11 +2,8 @@ package couchdb
 
 import (
 	"context"
-	"crypto/md5"
 	"encoding/json"
 	"fmt"
-	"strings"
-
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -43,41 +40,9 @@ func resourceDesignDocument() *schema.Resource {
 				Description: "Language of map/ reduce functions",
 			},
 			"view": {
-				Type:        schema.TypeSet,
-				Optional:    true,
-				MaxItems:    1,
-				Description: "A view inside the design document",
-				Set: func(v interface{}) int {
-					view := v.(map[string]interface{})
-					name := view["name"].(string)
-					_map := view["map"].(string)
-					reduce := view["reduce"].(string)
-					id := 0
-					for _, b := range md5.Sum([]byte(name + _map + reduce)) {
-						id += int(b)
-					}
-					return id
-				},
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"name": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "Name of the view",
-						},
-						"map": {
-							Type:        schema.TypeString,
-							Required:    true,
-							Description: "Map function",
-
-						},
-						"reduce": {
-							Type:        schema.TypeString,
-							Optional:    true,
-							Description: "Reduce functionn",
-						},
-					},
-				},
+				Type:        schema.TypeString,
+				Required:    true,
+				Description: "A view inside the design document (wrap in <<EOF { } EOF)",
 			},
 		},
 	}
@@ -95,42 +60,28 @@ func designDocumentCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	if dd != nil {
 		return append(diags, *dd)
 	}
+	defer db.Close(ctx)
 
 	docId := fmt.Sprintf("_design/%s", d.Get("name").(string))
 
-	if vs, ok := d.GetOk("view"); ok {
-
-		designDoc := tdesignDoc{
-			ID:       docId,
-			Language: d.Get("language").(string),
-			View:     Tview{},
-		}
-
-		views := vs.(*schema.Set)
-		for _, v := range views.List() {
-			view := v.(map[string]interface{})
-			designDoc.View.Name = view["name"].(string)
-			designDoc.View.Map = strings.ReplaceAll(view["map"].(string), "\n", "")
-			designDoc.View.Reduce = strings.ReplaceAll(view["reduce"].(string), "\n", "")
-		}
-
-		rev, err := db.Put(ctx, docId, designDoc)
-		if err != nil {
-
-			body := ""
-			if b, err := json.Marshal(designDoc); err == nil {
-				body = string(b)
-			} else {
-				body = err.Error()
-			}
-
-			url := fmt.Sprintf("%s/%s", dbName, docId)
-
-			return AppendDiagnostic(diags, fmt.Errorf("%s \nUrl: %s \nDesign Doc:- \n%s", err.Error(), url, body), "Unable to marshal design doc")
-		}
-
-		d.Set("revision", rev)
+	designDoc := map[string]interface{}{}
+	err := json.Unmarshal([]byte(d.Get("view").(string)), &designDoc)
+	if err != nil {
+		return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
 	}
+
+	doc := map[string]interface{}{}
+	doc["view"] = designDoc
+	doc["_id"] = docId
+	doc["language"] = d.Get("language").(string)
+
+	rev, err := db.Put(ctx, docId, doc)
+	if err != nil {
+		return AppendDiagnostic(diags, fmt.Errorf("%s \nDesign Doc:- \n%s", err.Error(),  d.Get("view").(string)), "Unable to create design doc")
+	}
+
+	d.Set("revision", rev)
+
 
 	d.SetId(docId)
 
@@ -148,6 +99,7 @@ func designDocumentRead(ctx context.Context, d *schema.ResourceData, meta interf
 	if dd != nil {
 		return append(diags, *dd)
 	}
+	defer db.Close(ctx)
 
 	docId := fmt.Sprintf("_design/%s", d.Get("name").(string))
 
@@ -160,6 +112,7 @@ func designDocumentRead(ctx context.Context, d *schema.ResourceData, meta interf
 
 	d.Set("language", designDoc.Language)
 
+	//todo check
 	view := []map[string]string{}
 	v := map[string]string{
 		"name":   designDoc.View.Name,
@@ -185,30 +138,26 @@ func designDocumentUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	if dd != nil {
 		return append(diags, *dd)
 	}
+	defer db.Close(ctx)
 
-	if vs, ok := d.GetOk("view"); ok {
-		designDoc := tdesignDoc{
-			ID:       d.Id(),
-			Language: d.Get("language").(string),
-			View:     Tview{},
-			Rev:      d.Get("revision").(string),
-		}
-
-		views := vs.(*schema.Set)
-		for _, v := range views.List() {
-			view := v.(map[string]interface{})
-			designDoc.View.Name = view["name"].(string)
-			designDoc.View.Map = strings.ReplaceAll(view["map"].(string), "\n", "")
-			designDoc.View.Reduce = strings.ReplaceAll(view["reduce"].(string), "\n", "")
-		}
-
-		rev, err := db.Put(ctx, d.Id(), designDoc)
-		if err != nil {
-			return AppendDiagnostic(diags, err, "Unable to update design doc")
-		}
-
-		d.Set("revision", rev)
+	designDoc := map[string]interface{}{}
+	err := json.Unmarshal([]byte(d.Get("view").(string)), &designDoc)
+	if err != nil {
+		return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
 	}
+
+	doc := map[string]interface{}{}
+	doc["_rev"] = d.Get("revision").(string)
+	doc["view"] = designDoc
+	doc["_id"] = d.Id()
+	doc["language"] = d.Get("language").(string)
+
+	rev, err := db.Put(ctx, d.Id(), doc)
+	if err != nil {
+		return AppendDiagnostic(diags, fmt.Errorf("%s \nDesign Doc:- \n%s", err.Error(),  d.Get("view").(string)), "Unable to update design doc")
+	}
+
+	d.Set("revision", rev)
 
 	return diags
 }
@@ -224,13 +173,17 @@ func designDocumentDelete(ctx context.Context, d *schema.ResourceData, meta inte
 	if dd != nil {
 		return append(diags, *dd)
 	}
-	_, err := db.Delete(ctx, d.Id(), d.Get("revision").(string))
+	defer db.Close(ctx)
+
+	rev, err := db.Delete(ctx, d.Id(), d.Get("revision").(string))
 
 	if err != nil {
 		return AppendDiagnostic(diags, fmt.Errorf("docID: %s \nrev: %s \n%s", d.Id(), d.Get("revision").(string),  err.Error()), "Unable to delete design doc")
 	}
 
 	d.SetId("")
+	d.Set("revision", rev)
+
 	return diags
 }
 

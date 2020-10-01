@@ -60,11 +60,13 @@ resource "couchdb_database" "db1" {
 resource "couchdb_database_design_document" "test" {
   database = couchdb_database.db1.name
   name = "types"
-  view {
-    name = "people"
-    map = "function(doc) { if (doc.type == 'person') { emit(doc); } }"
-    reduce = ""
+  view = <<EOF
+  {
+    "name" : "people",
+    "map" : "function(doc) { if (doc.type == 'person') { emit(doc); } }",
+    "reduce": ""
   }
+EOF
 }
 
 resource "couchdb_database" "user" {
@@ -86,7 +88,7 @@ resource "couchdb_user" "jenny" {
 resource "couchdb_document" "spaghetti" {
     database = couchdb_database.db1.name
 	doc = <<EOF
-{
+  {
 		"description": "An Italian-American dish that usually consists of spaghetti, tomato sauce and meatballs.",
 		"ingredients": [
 			"spaghetti",
@@ -95,5 +97,23 @@ resource "couchdb_document" "spaghetti" {
 		],
 		"name": "Spaghetti with meatballs"
 	}
+EOF
+}
+
+resource "couchdb_bulk_documents" "recipes" {
+  database = couchdb_database.db1.name
+  docs = <<EOF
+  [
+    {
+          "_id": "9391913b56c655881fa57d60830008ac",
+          "description": "An Italian-American dish that usually consists of spaghetti, tomato sauce and meatballs.",
+          "ingredients": [
+              "spaghetti",
+              "tomato sauce",
+              "meatballs"
+          ],
+          "name": "Spaghetti"
+      }
+  ]
 EOF
 }

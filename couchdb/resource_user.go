@@ -57,6 +57,7 @@ func userCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) (
 	if dd != nil {
 		return append(diags, *dd)
 	}
+	defer db.Close(ctx)
 
 	user := &tuser{
 		ID:       kivik.UserPrefix + uuid.New().String(),
@@ -85,6 +86,7 @@ func userRead(ctx context.Context, d *schema.ResourceData, meta interface{}) (di
 	if dd != nil {
 		return append(diags, *dd)
 	}
+	defer db.Close(ctx)
 
 	row := db.Get(ctx, d.Id())
 
@@ -112,6 +114,7 @@ func userUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) (
 	if dd != nil {
 		return append(diags, *dd)
 	}
+	defer db.Close(ctx)
 
 	user := &tuser{
 		ID:       d.Id(),
@@ -140,6 +143,7 @@ func userDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) (
 	if dd != nil {
 		return append(diags, *dd)
 	}
+	defer db.Close(ctx)
 
 	_, err := db.Delete(ctx, d.Id(), d.Get("revision").(string))
 	if err != nil {

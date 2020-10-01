@@ -60,6 +60,7 @@ func documentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{
 	if dd != nil {
 		return append(diags, *dd)
 	}
+	defer db.Close(ctx)
 
 	docId := d.Id()
 	doc := map[string]interface{}{}
@@ -98,6 +99,7 @@ func documentDelete(ctx context.Context, d *schema.ResourceData, meta interface{
 	if dd != nil {
 		return append(diags, *dd)
 	}
+	defer db.Close(ctx)
 
 	rev := d.Get("revision").(string)
 
@@ -107,6 +109,7 @@ func documentDelete(ctx context.Context, d *schema.ResourceData, meta interface{
 		AppendDiagnostic(diags, err,  "Unable to delete Document")
 	}
 
+	d.SetId("")
 	d.Set("revision", rev)
 
 	return diags
@@ -124,6 +127,7 @@ func documentRead(ctx context.Context, d *schema.ResourceData, meta interface{})
 	if dd != nil {
 		return append(diags, *dd)
 	}
+	defer db.Close(ctx)
 
 	row := db.Get(ctx, d.Id())
 
@@ -158,6 +162,7 @@ func documentCreate(ctx context.Context, d *schema.ResourceData, meta interface{
 	if dd != nil {
 		return append(diags, *dd)
 	}
+	defer db.Close(ctx)
 
 	docId := d.Get("docid").(string)
 	if docId == "" {

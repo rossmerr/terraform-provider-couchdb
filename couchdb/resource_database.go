@@ -166,9 +166,9 @@ func updateDatabase(ctx context.Context, d *schema.ResourceData, meta interface{
 	if d.HasChange("security") {
 		db, dd := connectToDB(ctx, client, dbName)
 		if dd != nil {
-			diags = append(diags, *dd)
-			return diags
+			return append(diags, *dd)
 		}
+		defer db.Close(ctx)
 
 		if v, ok := d.GetOk("security"); ok {
 			vs := v.([]interface{})
@@ -212,9 +212,9 @@ func readDatabase(ctx context.Context, d *schema.ResourceData, meta interface{})
 
 	db, dd := connectToDB(ctx, client, dbName)
 	if dd != nil {
-		diags = append(diags, *dd)
-		return diags
+		return append(diags, *dd)
 	}
+	defer db.Close(ctx)
 
 	// You can't edit the security object of the user database.
 	if dbName == usersDB {

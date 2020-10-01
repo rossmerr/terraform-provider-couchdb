@@ -22,3 +22,12 @@ func AppendDiagnostic(diags diag.Diagnostics, err error, summary string) diag.Di
 	})
 	return diags
 }
+
+func AppendDiagnosticWarning(diags diag.Diagnostics, err error, summary string) diag.Diagnostics {
+	diags = append(diags, diag.Diagnostic{
+		Severity: diag.Error,
+		Summary:  summary,
+		Detail:   err.Error(),
+	})
+	return diags
+}
