@@ -12,10 +12,10 @@ import (
 
 func resourceDatabase() *schema.Resource {
 	return &schema.Resource{
-		CreateContext: CreateDatabase,
-		UpdateContext: UpdateDatabase,
-		ReadContext:   ReadDatabase,
-		DeleteContext: DeleteDatabase,
+		CreateContext: createDatabase,
+		UpdateContext: updateDatabase,
+		ReadContext:   readDatabase,
+		DeleteContext: deleteDatabase,
 		Importer: &schema.ResourceImporter{
 			State: schema.ImportStatePassthrough,
 		},
@@ -113,38 +113,26 @@ func resourceDatabase() *schema.Resource {
 	}
 }
 
-func CreateDatabase(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	var diags diag.Diagnostics
-
-	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
-	if err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Unable to connect to Server",
-			Detail:   err.Error(),
-		})
-		return diags
+func createDatabase(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
+	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
+	if dd != nil {
+		return append(diags, *dd)
 	}
 
 	dbName := d.Get("name").(string)
 	options := extractClusterOptions(d.Get("clustering"))
 	options["partitioned"] = d.Get("partitioned").(bool)
 
-	err = client.CreateDB(ctx, dbName, options)
+	err := client.CreateDB(ctx, dbName, options)
 	if err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Unable to create DB",
-			Detail:   err.Error(),
-		})
-		return diags
+		return AppendDiagnostic(diags, err, "Unable to create DB")
 	}
 
 	d.SetId(dbName)
 
 	// You can't edit the security object of the user database.
 	if dbName == usersDB {
-		return ReadDatabase(ctx, d, meta)
+		return readDatabase(ctx, d, meta)
 	}
 
 	if v, ok := d.GetOk("security"); ok {
@@ -153,37 +141,26 @@ func CreateDatabase(ctx context.Context, d *schema.ResourceData, meta interface{
 			db := client.DB(ctx, dbName)
 			err := db.SetSecurity(ctx, extractDatabaseSecurity(vs[0]))
 			if err != nil {
-				diags = append(diags, diag.Diagnostic{
-					Severity: diag.Error,
-					Summary:  "Unable to set security on DB",
-					Detail:   err.Error(),
-				})
-				return diags
+				return AppendDiagnostic(diags, err, "Unable to set security on DB")
 			}
 		}
 	}
 
 
-	return ReadDatabase(ctx, d, meta)
+	return readDatabase(ctx, d, meta)
 }
 
-func UpdateDatabase(ctx context.Context, d *schema.ResourceData, meta interface{})  diag.Diagnostics {
-	var diags diag.Diagnostics
-
-	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
-	if err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Unable to connect to Server",
-			Detail:   err.Error(),
-		})
-		return diags
+func updateDatabase(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
+	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
+	if dd != nil {
+		return append(diags, *dd)
 	}
+
 	dbName := d.Get("name").(string)
 
 	// You can't edit the security object of the user database.
 	if dbName == usersDB {
-		return ReadDatabase(ctx, d, meta)
+		return readDatabase(ctx, d, meta)
 	}
 
 	if d.HasChange("security") {
@@ -198,53 +175,31 @@ func UpdateDatabase(ctx context.Context, d *schema.ResourceData, meta interface{
 			if len(vs) == 1 {
 				err := db.SetSecurity(ctx, extractDatabaseSecurity(vs[0]))
 				if err != nil {
-					diags = append(diags, diag.Diagnostic{
-						Severity: diag.Error,
-						Summary:  "Unable to update security on DB",
-						Detail:   err.Error(),
-					})
-					return diags
+					return AppendDiagnostic(diags, err, "Unable to update security on DB")
 				}
 			}
 		} else {
 			err := db.SetSecurity(ctx, &kivik.Security{})
 			if err != nil {
-				diags = append(diags, diag.Diagnostic{
-					Severity: diag.Error,
-					Summary:  "Unable to clear security on DB",
-					Detail:   err.Error(),
-				})
-				return diags
+				return AppendDiagnostic(diags, err, "Unable to clear security on DB")
 			}
 		}
 	}
 
 
-	return ReadDatabase(ctx, d, meta)
+	return readDatabase(ctx, d, meta)
 }
 
-func ReadDatabase(ctx context.Context, d *schema.ResourceData, meta interface{})  diag.Diagnostics {
-	var diags diag.Diagnostics
-
-	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
-	if err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Unable to connect to Server",
-			Detail:   err.Error(),
-		})
-		return diags
+func readDatabase(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
+	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
+	if dd != nil {
+		return append(diags, *dd)
 	}
 
 	dbName := d.Id()
 	dbStates, err := client.DBsStats(ctx, []string{dbName} )
 	if err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Unable to read DB states",
-			Detail:   err.Error(),
-		})
-		return diags
+		return AppendDiagnostic(diags, err, "Unable to read DB states")
 	}
 
 	if len(dbStates) > 0 {
@@ -268,12 +223,7 @@ func ReadDatabase(ctx context.Context, d *schema.ResourceData, meta interface{})
 
 	sec, err := db.Security(ctx)
 	if err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Unable to read security on DB",
-			Detail:   err.Error(),
-		})
-		return diags
+		return AppendDiagnostic(diags, err, "Unable to read security on DB")
 	}
 
 	if len(sec.Admins.Roles) > 0 ||
@@ -296,33 +246,20 @@ func ReadDatabase(ctx context.Context, d *schema.ResourceData, meta interface{})
 	return diags
 }
 
-func DeleteDatabase(ctx context.Context, d *schema.ResourceData, meta interface{})  diag.Diagnostics {
-	var diags diag.Diagnostics
-
-	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
-	if err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Unable to connect to Server",
-			Detail:   err.Error(),
-		})
-		return diags
+func deleteDatabase(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
+	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
+	if dd != nil {
+		return append(diags, *dd)
 	}
 
 	dbName := d.Id()
-	err = client.DestroyDB(ctx, dbName)
+	err := client.DestroyDB(ctx, dbName)
 	if err == nil {
 		d.SetId("")
 		return diags
 	}
 
-	diags = append(diags, diag.Diagnostic{
-		Severity: diag.Error,
-		Summary:  "Unable to delete DB",
-		Detail:  fmt.Sprintf("dbName: %s \n%s", dbName,  err.Error()),
-	})
-
-	return diags
+	return AppendDiagnostic(diags, fmt.Errorf("dbName: %s \n%s", dbName,  err.Error()), "Unable to delete DB")
 }
 
 func extractClusterOptions(v interface{}) (kivik.Options) {

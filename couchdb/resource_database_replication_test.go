@@ -45,9 +45,9 @@ func testAccCouchDBDatabaseReplicationExists(n string) resource.TestCheckFunc {
 			return fmt.Errorf("replication ID is not set")
 		}
 
-		client, err := connectToCouchDB(context.Background(), testAccProvider.Meta().(*CouchDBConfiguration))
-		if err != nil {
-			return err
+		client, dd := connectToCouchDB(context.Background(), testAccProvider.Meta().(*CouchDBConfiguration))
+		if dd != nil {
+			return fmt.Errorf(dd.Detail)
 		}
 
 		db := client.DB(context.Background(), rs.Primary.Attributes["database"])
@@ -67,16 +67,16 @@ func testAccCouchDBDatabaseReplicationDestroy(s *terraform.State) error {
 			continue
 		}
 
-		client, err := connectToCouchDB(context.Background(), testAccProvider.Meta().(*CouchDBConfiguration))
-		if err != nil {
-			return err
+		client, dd := connectToCouchDB(context.Background(), testAccProvider.Meta().(*CouchDBConfiguration))
+		if dd != nil {
+			return fmt.Errorf(dd.Detail)
 		}
 
 		db := client.DB(context.Background(), rs.Primary.Attributes["database"])
 		row := db.Get(context.Background(), rs.Primary.ID)
 
 		var rep map[string]interface{}
-		if err = row.ScanDoc(&rep); err != nil {
+		if err := row.ScanDoc(&rep); err != nil {
 			switch kivik.StatusCode(err) {
 			case http.StatusNotFound:
 				return nil

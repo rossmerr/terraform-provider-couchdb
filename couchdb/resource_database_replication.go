@@ -10,10 +10,10 @@ import (
 
 func resourceDatabaseReplication() *schema.Resource {
 	return &schema.Resource{
-		CreateContext: DatabaseReplicationCreate,
-		ReadContext:   DatabaseReplicationRead,
-		DeleteContext: DatabaseReplicationDelete,
-		UpdateContext: DatabaseReplicationUpdate,
+		CreateContext: databaseReplicationCreate,
+		ReadContext:   databaseReplicationRead,
+		DeleteContext: databaseReplicationDelete,
+		UpdateContext: databaseReplicationUpdate,
 		Schema: map[string]*schema.Schema{
 			"name": {
 				Type:        schema.TypeString,
@@ -62,18 +62,10 @@ func resourceDatabaseReplication() *schema.Resource {
 	}
 }
 
-func DatabaseReplicationCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	// Warning or errors can be collected in a slice type
-	var diags diag.Diagnostics
-
-	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
-	if err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Unable to connect to Server",
-			Detail:   err.Error(),
-		})
-		return diags
+func databaseReplicationCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
+	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
+	if dd != nil {
+		return append(diags, *dd)
 	}
 
 	options := kivik.Options{
@@ -89,21 +81,13 @@ func DatabaseReplicationCreate(ctx context.Context, d *schema.ResourceData, meta
 	}
 	d.SetId(rep.ReplicationID())
 
-	return DatabaseReplicationRead(ctx, d, meta)
+	return databaseReplicationRead(ctx, d, meta)
 }
 
-func DatabaseReplicationRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	// Warning or errors can be collected in a slice type
-	var diags diag.Diagnostics
-
-	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
-	if err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Unable to connect to Server",
-			Detail:   err.Error(),
-		})
-		return diags
+func databaseReplicationRead(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
+	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
+	if dd != nil {
+		return append(diags, *dd)
 	}
 
 	reps, err := client.GetReplications(ctx)
@@ -126,18 +110,10 @@ func DatabaseReplicationRead(ctx context.Context, d *schema.ResourceData, meta i
 }
 
 
-func DatabaseReplicationDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	// Warning or errors can be collected in a slice type
-	var diags diag.Diagnostics
-
-	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
-	if err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Unable to connect to Server",
-			Detail:   err.Error(),
-		})
-		return diags
+func databaseReplicationDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
+	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
+	if dd != nil {
+		return append(diags, *dd)
 	}
 
 	reps, err := client.GetReplications(ctx)
@@ -158,10 +134,10 @@ func DatabaseReplicationDelete(ctx context.Context, d *schema.ResourceData, meta
 	return diags
 }
 
-func DatabaseReplicationUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	err := DatabaseReplicationDelete(ctx, d, meta)
+func databaseReplicationUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
+	err := databaseReplicationDelete(ctx, d, meta)
 	if err != nil {
 		return err
 	}
-	return DatabaseReplicationCreate(ctx, d, meta)
+	return databaseReplicationCreate(ctx, d, meta)
 }

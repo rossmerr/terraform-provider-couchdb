@@ -1,20 +1,20 @@
 package couchdb
 
 import (
-	"context"
-	"encoding/json"
-	"github.com/go-kivik/kivik/v3"
-	"github.com/google/uuid"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
-	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+"context"
+"encoding/json"
+"github.com/go-kivik/kivik/v3"
+"github.com/google/uuid"
+"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
+"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
-func resourceDocument() *schema.Resource {
+func resourceBulkDocuments() *schema.Resource {
 	return &schema.Resource{
-		CreateContext: documentCreate,
-		ReadContext:   documentRead,
-		UpdateContext: documentUpdate,
-		DeleteContext: documentDelete,
+		CreateContext: bulkDocumentsCreate,
+		ReadContext:   bulkDocumentsRead,
+		UpdateContext: bulkDocumentsUpdate,
+		DeleteContext: bulkDocumentsDelete,
 
 		Schema: map[string]*schema.Schema{
 			"database": {
@@ -23,32 +23,22 @@ func resourceDocument() *schema.Resource {
 				ForceNew:    true,
 				Description: "Database to associate design with",
 			},
-			"revision": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "Revision",
+			"new_edits": {
+				Type:        schema.TypeBool,
+				Optional: true,
+				Default: true,
+				Description: "If false, prevents the database from assigning them new revision IDs. Default is true. Optional",
 			},
-			"docid": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "Document ID",
-			},
-			"doc": {
+			"docs": {
 				Type:        schema.TypeString,
 				Required:    true,
 				Description: "JSON Document (wrap in <<EOF { } EOF)",
-			},
-			"batch": {
-				Type:        schema.TypeBool,
-				Optional:    true,
-				Default:     false,
-				Description: " Stores document in batch mode, Batch mode is not suitable for critical data",
 			},
 		},
 	}
 }
 
-func documentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
+func bulkDocumentsUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
 	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if dd != nil {
 		return append(diags, *dd)
@@ -66,7 +56,7 @@ func documentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{
 	err := json.Unmarshal([]byte(d.Get("doc").(string)), &doc)
 
 	if err != nil {
-		AppendDiagnostic(diags, err,  "Unable to unmarshal JSON")
+		return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
 	}
 
 	options := kivik.Options{}
@@ -78,15 +68,15 @@ func documentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{
 
 	rev, err := db.Put(ctx, docId, doc, options)
 	if err != nil {
-		AppendDiagnostic(diags, err,  "Unable to update Document")
+		return AppendDiagnostic(diags, err, "Unable to update Document")
 	}
 	d.Set("revision", rev)
 
-	return documentRead(ctx, d, meta)
+	return bulkDocumentsRead(ctx, d, meta)
 }
 
 
-func documentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
+func bulkDocumentsDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
 	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if dd != nil {
 		return append(diags, *dd)
@@ -104,7 +94,7 @@ func documentDelete(ctx context.Context, d *schema.ResourceData, meta interface{
 	rev, err := db.Delete(ctx, d.Id(), rev)
 
 	if err != nil {
-		AppendDiagnostic(diags, err,  "Unable to delete Document")
+		return AppendDiagnostic(diags, err, "Unable to delete Document")
 	}
 
 	d.Set("revision", rev)
@@ -112,11 +102,12 @@ func documentDelete(ctx context.Context, d *schema.ResourceData, meta interface{
 	return diags
 }
 
-func documentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
+func bulkDocumentsRead(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
 	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if dd != nil {
 		return append(diags, *dd)
 	}
+
 
 	dbName := d.Get("database").(string)
 
@@ -130,7 +121,7 @@ func documentRead(ctx context.Context, d *schema.ResourceData, meta interface{})
 	var doc  map[string]interface{}
 
 	if err := row.ScanDoc(&doc); err != nil {
-		AppendDiagnostic(diags, err,  "Unable to read Document")
+		return AppendDiagnostic(diags, err, "Unable to read Document")
 	}
 
 	d.Set("revision", row.Rev)
@@ -138,7 +129,7 @@ func documentRead(ctx context.Context, d *schema.ResourceData, meta interface{})
 	raw, err := json.Marshal(doc)
 
 	if err != nil {
-		AppendDiagnostic(diags, err,  "Unable to marshal JSON")
+		return AppendDiagnostic(diags, err, "Unable to marshal JSON")
 	}
 
 	d.Set("doc", raw)
@@ -146,7 +137,7 @@ func documentRead(ctx context.Context, d *schema.ResourceData, meta interface{})
 	return diags
 }
 
-func documentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
+func bulkDocumentsCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
 	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
 	if dd != nil {
 		return append(diags, *dd)
@@ -178,11 +169,10 @@ func documentCreate(ctx context.Context, d *schema.ResourceData, meta interface{
 
 	rev, err := db.Put(ctx, docId, doc, options)
 	if err != nil {
-		return AppendDiagnostic(diags, err, "Unable to create to Document")
+		return AppendDiagnostic(diags, err, "Unable to create Document")
 	}
-
 	d.Set("revision", rev)
 	d.SetId(docId)
 
-	return documentRead(ctx, d, meta)
+	return bulkDocumentsRead(ctx, d, meta)
 }

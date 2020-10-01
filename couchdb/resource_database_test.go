@@ -49,12 +49,12 @@ func testAccCouchDBDatabaseExists(n string) resource.TestCheckFunc {
 		if rs.Primary.ID == "" {
 			return fmt.Errorf("database ID is set")
 		}
-		client, err := connectToCouchDB(context.Background(), testAccProvider.Meta().(*CouchDBConfiguration))
-		if err != nil {
-			return err
+		client, dd := connectToCouchDB(context.Background(), testAccProvider.Meta().(*CouchDBConfiguration))
+		if dd != nil {
+			return fmt.Errorf(dd.Detail)
 		}
 
-		ok, err = client.DBExists(context.Background(), rs.Primary.ID)
+		ok, err := client.DBExists(context.Background(), rs.Primary.ID)
 		if err != nil {
 			return err
 		}
@@ -79,9 +79,9 @@ func testAccCouchDBDatabaseSecurity(n string) resource.TestCheckFunc {
 			return fmt.Errorf("database ID is not set")
 		}
 
-		client, err := connectToCouchDB(context.Background(), testAccProvider.Meta().(*CouchDBConfiguration))
-		if err != nil {
-			return err
+		client, dd := connectToCouchDB(context.Background(), testAccProvider.Meta().(*CouchDBConfiguration))
+		if dd != nil {
+			return fmt.Errorf(dd.Detail)
 		}
 
 		db := client.DB(context.Background(), rs.Primary.ID)
@@ -108,9 +108,9 @@ func testAccCouchDBDatabaseSecurity(n string) resource.TestCheckFunc {
 }
 
 func testAccCouchDBDatabaseDestroy(s *terraform.State) error {
-	client, err := connectToCouchDB(context.Background(), testAccProvider.Meta().(*CouchDBConfiguration))
-	if err != nil {
-		return err
+	client, dd := connectToCouchDB(context.Background(), testAccProvider.Meta().(*CouchDBConfiguration))
+	if dd != nil {
+		return fmt.Errorf(dd.Detail)
 	}
 
 	for _, rs := range s.RootModule().Resources {

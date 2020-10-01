@@ -39,16 +39,16 @@ func testAccCouchDBUserExists(n string) resource.TestCheckFunc {
 			return fmt.Errorf("user ID is not set")
 		}
 
-		client, err := connectToCouchDB(context.Background(), testAccProvider.Meta().(*CouchDBConfiguration))
-		if err != nil {
-			return err
+		client, dd := connectToCouchDB(context.Background(), testAccProvider.Meta().(*CouchDBConfiguration))
+		if dd != nil {
+			return fmt.Errorf(dd.Detail)
 		}
 
 		db := client.DB(context.Background(), usersDB)
 
 		row := db.Get(context.Background(), rs.Primary.ID)
 		var user tuser
-		if err = row.ScanDoc(&user); err != nil {
+		if err := row.ScanDoc(&user); err != nil {
 			return err
 		}
 
@@ -62,9 +62,9 @@ func testAccCouchDBUserDestroy(s *terraform.State) error {
 			continue
 		}
 
-		client, err := connectToCouchDB(context.Background(), testAccProvider.Meta().(*CouchDBConfiguration))
-		if err != nil {
-			return err
+		client, dd := connectToCouchDB(context.Background(), testAccProvider.Meta().(*CouchDBConfiguration))
+		if dd != nil {
+			return fmt.Errorf(dd.Detail)
 		}
 
 		db := client.DB(context.Background(), usersDB)
@@ -72,7 +72,7 @@ func testAccCouchDBUserDestroy(s *terraform.State) error {
 		row := db.Get(context.Background(), rs.Primary.ID)
 
 		var user tuser
-		if err = row.ScanDoc(&user); err != nil {
+		if err := row.ScanDoc(&user); err != nil {
 			switch kivik.StatusCode(err) {
 			case http.StatusNotFound:
 				return nil

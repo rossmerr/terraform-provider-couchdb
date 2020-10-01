@@ -13,10 +13,10 @@ import (
 
 func resourceDesignDocument() *schema.Resource {
 	return &schema.Resource{
-		CreateContext: DesignDocumentCreate,
-		ReadContext:   DesignDocumentRead,
-		UpdateContext: DesignDocumentUpdate,
-		DeleteContext: DesignDocumentDelete,
+		CreateContext: designDocumentCreate,
+		ReadContext:   designDocumentRead,
+		UpdateContext: designDocumentUpdate,
+		DeleteContext: designDocumentDelete,
 
 		Schema: map[string]*schema.Schema{
 			"database": {
@@ -83,25 +83,17 @@ func resourceDesignDocument() *schema.Resource {
 	}
 }
 
-func DesignDocumentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	var diags diag.Diagnostics
-
-	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
-	if err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Unable to connect to Server",
-			Detail:   err.Error(),
-		})
-		return diags
+func designDocumentCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
+	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
+	if dd != nil {
+		return append(diags, *dd)
 	}
 
 	dbName := d.Get("database").(string)
 
 	db, dd := connectToDB(ctx, client, dbName)
 	if dd != nil {
-		diags = append(diags, *dd)
-		return diags
+		return append(diags, *dd)
 	}
 
 	docId := fmt.Sprintf("_design/%s", d.Get("name").(string))
@@ -134,12 +126,7 @@ func DesignDocumentCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 			url := fmt.Sprintf("%s/%s", dbName, docId)
 
-			diags = append(diags, diag.Diagnostic{
-				Severity: diag.Error,
-				Summary:  "Unable to create design doc",
-				Detail:   fmt.Sprintf("%s \nUrl: %s \nDesign Doc:- \n%s", err.Error(), url, body),
-			})
-			return diags
+			return AppendDiagnostic(diags, fmt.Errorf("%s \nUrl: %s \nDesign Doc:- \n%s", err.Error(), url, body), "Unable to marshal design doc")
 		}
 
 		d.Set("revision", rev)
@@ -147,26 +134,19 @@ func DesignDocumentCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	d.SetId(docId)
 
-	return DesignDocumentRead(ctx, d, meta)
+	return designDocumentRead(ctx, d, meta)
 }
 
-func DesignDocumentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	var diags diag.Diagnostics
-
-	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
-	if err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Unable to connect to Server",
-			Detail:   err.Error(),
-		})
-		return diags
+func designDocumentRead(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
+	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
+	if dd != nil {
+		return append(diags, *dd)
 	}
+
 	dbName := d.Get("database").(string)
 	db, dd := connectToDB(ctx, client, dbName)
 	if dd != nil {
-		diags = append(diags, *dd)
-		return diags
+		return append(diags, *dd)
 	}
 
 	docId := fmt.Sprintf("_design/%s", d.Get("name").(string))
@@ -194,24 +174,16 @@ func DesignDocumentRead(ctx context.Context, d *schema.ResourceData, meta interf
 	return diags
 }
 
-func DesignDocumentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	var diags diag.Diagnostics
-
-	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
-	if err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Unable to connect to Server",
-			Detail:   err.Error(),
-		})
-		return diags
+func designDocumentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
+	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
+	if dd != nil {
+		return append(diags, *dd)
 	}
 
 	dbName := d.Get("database").(string)
 	db, dd := connectToDB(ctx, client, dbName)
 	if dd != nil {
-		diags = append(diags, *dd)
-		return diags
+		return append(diags, *dd)
 	}
 
 	if vs, ok := d.GetOk("view"); ok {
@@ -232,12 +204,7 @@ func DesignDocumentUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 
 		rev, err := db.Put(ctx, d.Id(), designDoc)
 		if err != nil {
-			diags = append(diags, diag.Diagnostic{
-				Severity: diag.Warning,
-				Summary:  "Unable to update design doc",
-				Detail:   err.Error(),
-			})
-			return diags
+			return AppendDiagnostic(diags, err, "Unable to update design doc")
 		}
 
 		d.Set("revision", rev)
@@ -246,35 +213,21 @@ func DesignDocumentUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	return diags
 }
 
-func DesignDocumentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) diag.Diagnostics {
-	// Warning or errors can be collected in a slice type
-	var diags diag.Diagnostics
-
-	client, err := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
-	if err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Unable to connect to Server",
-			Detail:   err.Error(),
-		})
-		return diags
+func designDocumentDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
+	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
+	if dd != nil {
+		return append(diags, *dd)
 	}
 
 	dbName := d.Get("database").(string)
 	db, dd := connectToDB(ctx, client, dbName)
 	if dd != nil {
-		diags = append(diags, *dd)
-		return diags
+		return append(diags, *dd)
 	}
-	_, err = db.Delete(ctx, d.Id(), d.Get("revision").(string))
+	_, err := db.Delete(ctx, d.Id(), d.Get("revision").(string))
 
 	if err != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Unable to delete design doc",
-			Detail:  fmt.Sprintf("docID: %s \nrev: %s \n%s", d.Id(), d.Get("revision").(string),  err.Error()),
-		})
-		return diags
+		return AppendDiagnostic(diags, fmt.Errorf("docID: %s \nrev: %s \n%s", d.Id(), d.Get("revision").(string),  err.Error()), "Unable to delete design doc")
 	}
 
 	d.SetId("")

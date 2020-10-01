@@ -61,6 +61,7 @@ func Provider() *schema.Provider {
 			"couchdb_database_replication":     resourceDatabaseReplication(),
 			"couchdb_user":                     resourceUser(),
 			"couchdb_document":                 resourceDocument(),
+			"couchdb_bulk_documents":           resourceBulkDocuments(),
 			"couchdb_database_design_document": resourceDesignDocument(),
 		},
 		ConfigureContextFunc: providerConfigure,
@@ -77,11 +78,9 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 	}, diags
 }
 
-func connectToCouchDB(ctx context.Context, conf *CouchDBConfiguration) (*kivik.Client, error) {
-
+func connectToCouchDB(ctx context.Context, conf *CouchDBConfiguration) (*kivik.Client, *diag.Diagnostic){
 	var client *kivik.Client
 	var err error
-
 	// When provisioning a database server there can often be a lag between
 	// when Terraform thinks it's available and when it is actually available.
 	// This is particularly acute when provisioning a server and then immediately
@@ -106,51 +105,24 @@ func connectToCouchDB(ctx context.Context, conf *CouchDBConfiguration) (*kivik.C
 	})
 
 	if retryError != nil {
-		return nil, fmt.Errorf("Could not connect to server: %s", retryError)
+		return client, &diag.Diagnostic{
+			Severity: diag.Error,
+			Summary:  "Unable to connect to Server",
+			Detail:   fmt.Sprintf("Could not connect to server: %s", retryError),
+		}
 	}
 
 	return client, nil
 }
 
 func connectToDB(ctx context.Context, client *kivik.Client, dbName string) (*kivik.DB, *diag.Diagnostic) {
+	db := client.DB(ctx, dbName)
 
-	var db *kivik.DB
-
-	// When provisioning a database server there can often be a lag between
-	// when Terraform thinks it's available and when it is actually available.
-	// This is particularly acute when provisioning a server and then immediately
-	// trying to provision a database on it.
-	retryError := resource.RetryContext(ctx, 5*time.Minute, func() *resource.RetryError {
-		db = client.DB(ctx, dbName)
-		if db.Err() != nil {
-			return resource.RetryableError(db.Err())
-		}
-
-		return nil
-	})
-
-	if retryError != nil {
-		return nil, &diag.Diagnostic{
+	if db.Err() != nil {
+		return db, &diag.Diagnostic{
 			Severity: diag.Error,
 			Summary:  "Unable to connect to DB",
-			Detail:   fmt.Sprintf("Could not connect to server: %s", retryError),
-		}
-	}
-
-	retryError = resource.RetryContext(ctx, 5*time.Minute, func() *resource.RetryError {
-		_, err := db.Stats(ctx)
-		if err != nil {
-			return resource.RetryableError(err)
-		}
-
-		return nil
-	})
-
-	if retryError != nil {
-		return nil, &diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Unable to connect to DB Stats",
-			Detail:   fmt.Sprintf("Could not connect to server: %s %s", retryError, dbName),
+			Detail:   fmt.Sprintf("Could not connect to server: %s", db.Err()),
 		}
 	}
 
