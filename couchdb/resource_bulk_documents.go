@@ -28,6 +28,12 @@ func resourceBulkDocuments() *schema.Resource {
 				Required:    true,
 				Description: "JSON Document, the _id field is required (wrap in <<EOF { } EOF)",
 			},
+			"partition": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Default:     "",
+				Description: "partition key to add to the document id",
+			},
 		},
 	}
 }
@@ -60,6 +66,19 @@ func bulkDocumentsUpdate(ctx context.Context, d *schema.ResourceData, meta inter
 
 	for i, raw := range docs {
 		doc := raw.(map[string]interface{})
+
+
+		if _, ok := doc["_id"]; !ok {
+			if id, ok := doc["id"]; !ok {
+				return AppendDiagnostic(diags, fmt.Errorf("doc no %d missing _id or id field for change tracking", i), "_id field required on each document")
+			} else {
+				doc["_id"] = id
+			}
+		}
+		if d.Get("partition").(string) != "" {
+			doc["_id"] = fmt.Sprintf("%s:%s", d.Get("partition").(string), doc["_id"])
+		}
+
 		id := doc["_id"].(string)
 		doc["_rev"] = revisions[id]
 		docs[i] = doc
@@ -160,9 +179,6 @@ func bulkDocumentsRead(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	var bulkRev []kivik.BulkGetReference
 
-	//revisions := strings.Split(d.Get("revisions").(string), ",")
-	//ids := strings.Split(d.Id(), ",")
-
 	var revisions map[string]string
 	err := json.Unmarshal([]byte(d.Id()), &revisions)
 
@@ -235,7 +251,14 @@ func bulkDocumentsCreate(ctx context.Context, d *schema.ResourceData, meta inter
 	for i, raw := range docs {
 		doc := raw.(map[string]interface{})
 		if _, ok := doc["_id"]; !ok {
-			return AppendDiagnostic(diags, fmt.Errorf("doc no %d missing _id field for change tracking", i), "_id field required on each document")
+			if id, ok := doc["id"]; !ok {
+				return AppendDiagnostic(diags, fmt.Errorf("doc no %d missing _id or id field for change tracking", i), "_id field required on each document")
+			} else {
+				doc["_id"] = id
+			}
+		}
+		if d.Get("partition").(string) != "" {
+			doc["_id"] = fmt.Sprintf("%s:%s", d.Get("partition").(string), doc["_id"])
 		}
 	}
 
