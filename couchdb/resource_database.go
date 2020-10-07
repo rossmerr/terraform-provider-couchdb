@@ -219,28 +219,6 @@ func readDatabase(ctx context.Context, d *schema.ResourceData, meta interface{})
 		return diags
 	}
 
-	sec, err := db.Security(ctx)
-	if err != nil {
-		return AppendDiagnostic(diags, err, "Unable to read security on DB")
-	}
-
-	if len(sec.Admins.Roles) > 0 ||
-		len(sec.Admins.Names) > 0 ||
-		len(sec.Members.Roles) > 0 ||
-		len(sec.Members.Names) > 0 {
-		security := []map[string][]string{
-			{
-				"admins":       sec.Admins.Names,
-				"admin_roles":  sec.Admins.Roles,
-				"members":      sec.Members.Names,
-				"member_roles": sec.Members.Roles,
-			},
-		}
-		d.Set("security", security)
-	} else {
-		d.Set("security", nil)
-	}
-
 	return diags
 }
 
