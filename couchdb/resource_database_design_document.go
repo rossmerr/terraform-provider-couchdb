@@ -39,10 +39,15 @@ func resourceDesignDocument() *schema.Resource {
 				Default:     "javascript",
 				Description: "Language of map/ reduce functions",
 			},
-			"view": {
+			"views": {
 				Type:        schema.TypeString,
-				Required:    true,
-				Description: "A view inside the design document (wrap in <<EOF { } EOF)",
+				Optional:    true,
+				Description: "The views inside the design document (wrap in <<EOF { } EOF)",
+			},
+			"indexes": {
+				Type:        schema.TypeString,
+				Optional:    true,
+				Description: "The indexes inside the design document (wrap in <<EOF { } EOF)",
 			},
 		},
 	}
@@ -64,14 +69,26 @@ func designDocumentCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	docId := fmt.Sprintf("_design/%s", d.Get("name").(string))
 
-	designDoc := map[string]interface{}{}
-	err := json.Unmarshal([]byte(d.Get("view").(string)), &designDoc)
-	if err != nil {
-		return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
+	viewsDoc := map[string]interface{}{}
+
+	if interfaceViews, ok := d.GetOk("views"); ok {
+		if err := json.Unmarshal([]byte(interfaceViews.(string)), &viewsDoc); err != nil {
+			return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
+		}
+
 	}
 
+	indexesDoc := map[string]interface{}{}
+	if interfaceIndexes, ok := d.GetOk("indexes"); ok {
+		if err := json.Unmarshal([]byte(interfaceIndexes.(string)), &indexesDoc); err != nil {
+			return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
+		}
+	}
+
+
 	doc := map[string]interface{}{}
-	doc["view"] = designDoc
+	doc["views"] = viewsDoc
+	doc["indexes"] = indexesDoc
 	doc["_id"] = docId
 	doc["language"] = d.Get("language").(string)
 
@@ -111,17 +128,25 @@ func designDocumentRead(ctx context.Context, d *schema.ResourceData, meta interf
 
 	d.Set("language", designDoc.Language)
 
-	//todo check
-	view := []map[string]string{}
-	v := map[string]string{
-		"name":   designDoc.View.Name,
-		"map":    designDoc.View.Map,
-		"reduce": designDoc.View.Reduce,
+	if designDoc.Views != nil {
+		b, err := json.Marshal(designDoc.Views)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		d.Set("views", string(b))
 	}
-	view = append(view, v)
 
-	d.Set("view", view)
+	if designDoc.Indexes != nil {
+		b, err := json.Marshal(designDoc.Indexes)
+		if err != nil {
+			return diag.FromErr(err)
+		}
+		d.Set("indexes", string(b))
+	}
+
 	d.Set("revision", row.Rev)
+
+
 
 	return diags
 }
@@ -139,15 +164,22 @@ func designDocumentUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 	defer db.Close(ctx)
 
-	designDoc := map[string]interface{}{}
-	err := json.Unmarshal([]byte(d.Get("view").(string)), &designDoc)
+	viewsDoc := map[string]interface{}{}
+	err := json.Unmarshal([]byte(d.Get("views").(string)), &viewsDoc)
+	if err != nil {
+		return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
+	}
+
+	indexesDoc := map[string]interface{}{}
+	err = json.Unmarshal([]byte(d.Get("indexes").(string)), &indexesDoc)
 	if err != nil {
 		return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
 	}
 
 	doc := map[string]interface{}{}
 	doc["_rev"] = d.Get("revision").(string)
-	doc["view"] = designDoc
+	doc["views"] = viewsDoc
+	doc["indexes"] = indexesDoc
 	doc["_id"] = d.Id()
 	doc["language"] = d.Get("language").(string)
 
@@ -187,14 +219,9 @@ func designDocumentDelete(ctx context.Context, d *schema.ResourceData, meta inte
 }
 
 type tdesignDoc struct {
-	ID       string `json:"_id"`
-	Rev      string `json:"_rev,omitempty"`
-	View     Tview  `json:"view"`
-	Language string `json:"language"`
-}
-
-type Tview struct {
-	Map    string `json:"map"`
-	Reduce string `json:"reduce,omitempty"`
-	Name   string `json:"name"`
+	ID       string            `json:"_id"`
+	Rev      string            `json:"_rev,omitempty"`
+	Views    map[string]interface{}  `json:"views"`
+	Indexes  map[string]interface{} `json:"indexes"`
+	Language string            `json:"language"`
 }

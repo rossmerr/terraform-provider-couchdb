@@ -37,6 +37,7 @@ func TestProvider_impl(t *testing.T) {
 }
 
 func testAccPreCheck(t *testing.T) {
+
 	for _, name := range []string{"COUCHDB_ENDPOINT", "COUCHDB_USERNAME", "COUCHDB_PASSWORD"} {
 		if v := os.Getenv(name); v == "" {
 			t.Fatal("COUCHDB_ENDPOINT, COUCHDB_USERNAME and COUCHDB_PASSWORD must be set for acceptance tests")

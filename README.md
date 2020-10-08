@@ -68,11 +68,12 @@ resource "couchdb_database_replication" "db2db" {
 resource "couchdb_database_design_document" "test" {
     database = couchdb_database.db1.name
     name = "types"
-    view = <<EOF
+    views = <<EOF
     {
-        "name" : "people",
-        "map" : "function(doc) { if (doc.type == 'person') { emit(doc); } }",
-        "reduce": ""
+        "people" : {
+            "map" : "function(doc) { if (doc.type == 'person') { emit(doc); } }",
+            "reduce": ""           
+        }
     }
     EOF
 }

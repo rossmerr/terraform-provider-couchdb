@@ -1,9 +1,29 @@
-version: "3.7"
+version: "3.8"
 services:
   db:
     image: "couchdb:3.1.0"
     environment:
-      COUCHDB_PASSWORD: secret
+      COUCHDB_PASSWORD: password
       COUCHDB_USER: admin
+      NODENAME: 10.0.0.10
+      ERL_FLAGS: -setcookie monster
     ports:
-      - "5900:5984"
+      - "8901:5984"
+    networks:
+      couchdb-net:
+        ipv4_address: 10.0.0.10
+  clouseau1:
+    image: rossmerr/clouseau:latest
+    restart: always
+    depends_on:
+      - db
+    volumes:
+      - ./data/clouseau/1:/data
+    network_mode: service:db
+networks:
+  couchdb-net:
+    name: couchdb-net
+    driver: bridge
+    ipam:
+      config:
+        - subnet: 10.0.0.0/24

@@ -3,8 +3,6 @@ package couchdb
 import (
 	"context"
 	"fmt"
-	"strconv"
-
 	"github.com/go-kivik/kivik/v3"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -202,10 +200,10 @@ func readDatabase(ctx context.Context, d *schema.ResourceData, meta interface{})
 
 	if len(dbStates) > 0 {
 		state := dbStates[0]
-		d.Set("document_count", strconv.FormatInt(state.DocCount, 16))
-		d.Set("document_deletion_count", strconv.FormatInt(state.DeletedCount, 16))
-		d.Set("disk_size", strconv.FormatInt(state.DiskSize, 16))
-		d.Set("data_size", strconv.FormatInt(state.ActiveSize, 16))
+		d.Set("document_count", int(state.DocCount))
+		d.Set("document_deletion_count", int(state.DeletedCount))
+		d.Set("disk_size", int(state.DiskSize))
+		d.Set("data_size", int(state.ActiveSize))
 	}
 
 	db, dd := connectToDB(ctx, client, dbName)
