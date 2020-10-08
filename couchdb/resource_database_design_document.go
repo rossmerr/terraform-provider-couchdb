@@ -70,12 +70,10 @@ func designDocumentCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	docId := fmt.Sprintf("_design/%s", d.Get("name").(string))
 
 	viewsDoc := map[string]interface{}{}
-
 	if interfaceViews, ok := d.GetOk("views"); ok {
 		if err := json.Unmarshal([]byte(interfaceViews.(string)), &viewsDoc); err != nil {
 			return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
 		}
-
 	}
 
 	indexesDoc := map[string]interface{}{}
@@ -84,7 +82,6 @@ func designDocumentCreate(ctx context.Context, d *schema.ResourceData, meta inte
 			return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
 		}
 	}
-
 
 	doc := map[string]interface{}{}
 	doc["views"] = viewsDoc
@@ -165,16 +162,19 @@ func designDocumentUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	defer db.Close(ctx)
 
 	viewsDoc := map[string]interface{}{}
-	err := json.Unmarshal([]byte(d.Get("views").(string)), &viewsDoc)
-	if err != nil {
-		return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
+	if interfaceViews, ok := d.GetOk("views"); ok {
+		if err := json.Unmarshal([]byte(interfaceViews.(string)), &viewsDoc); err != nil {
+			return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
+		}
 	}
 
 	indexesDoc := map[string]interface{}{}
-	err = json.Unmarshal([]byte(d.Get("indexes").(string)), &indexesDoc)
-	if err != nil {
-		return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
+	if interfaceIndexes, ok := d.GetOk("indexes"); ok {
+		if err := json.Unmarshal([]byte(interfaceIndexes.(string)), &indexesDoc); err != nil {
+			return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
+		}
 	}
+
 
 	doc := map[string]interface{}{}
 	doc["_rev"] = d.Get("revision").(string)
