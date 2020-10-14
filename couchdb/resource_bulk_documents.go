@@ -4,7 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/go-kivik/kivik/v3"
+	"github.com/RossMerr/couchdb_go/client/database"
+	"github.com/RossMerr/couchdb_go/models"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -46,11 +47,6 @@ func bulkDocumentsUpdate(ctx context.Context, d *schema.ResourceData, meta inter
 
 	dbName := d.Get("database").(string)
 
-	db, dd := connectToDB(ctx, client, dbName)
-	if dd != nil {
-		return append(diags, *dd)
-	}
-	defer db.Close(ctx)
 
 	var revisions map[string]string
 	err := json.Unmarshal([]byte(d.Id()), &revisions)
@@ -58,7 +54,7 @@ func bulkDocumentsUpdate(ctx context.Context, d *schema.ResourceData, meta inter
 		return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
 	}
 
-	var docs []interface{}
+	var docs []models.Document
 	err = json.Unmarshal([]byte(d.Get("docs").(string)), &docs)
 	if err != nil {
 		return AppendDiagnostic(diags, err, "Unable to unmarshal docs JSON")
@@ -84,17 +80,22 @@ func bulkDocumentsUpdate(ctx context.Context, d *schema.ResourceData, meta inter
 		docs[i] = doc
 	}
 
-	row, err := db.BulkDocs(ctx, docs)
+	body := database.BulkDocsBody{
+		Docs: docs,
+	}
+
+	params := database.NewBulkDocsParams().WithDb(dbName).WithBody(body)
+	created, err := client.Database.BulkDocs(params)
 	if err != nil {
 		return AppendDiagnostic(diags, err, "Unable to bulk update documents")
 	}
-	defer row.Close()
 
-	if ok := row.Next(); ok {
-		if row.UpdateErr() != nil {
-			AppendDiagnostic(diags, row.UpdateErr(), "Unable to update/read Document")
+
+	for _, item := range created.Payload {
+		if item.Ok {
+			revisions[item.ID] = item.Rev
 		} else {
-			revisions[row.ID()] = row.Rev()
+			AppendDiagnostic(diags, fmt.Errorf(item.Error), item.Reason)
 		}
 	}
 
@@ -116,19 +117,13 @@ func bulkDocumentsDelete(ctx context.Context, d *schema.ResourceData, meta inter
 
 	dbName := d.Get("database").(string)
 
-	db, dd := connectToDB(ctx, client, dbName)
-	if dd != nil {
-		return append(diags, *dd)
-	}
-	defer db.Close(ctx)
-
 	var revisions map[string]string
 	err := json.Unmarshal([]byte(d.Id()), &revisions)
 	if err != nil {
 		return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
 	}
 
-	var docs []interface{}
+	var docs []models.Document
 	for id, rev := range revisions {
 		doc := map[string]interface{}{}
 		doc["_id"] = id
@@ -137,18 +132,20 @@ func bulkDocumentsDelete(ctx context.Context, d *schema.ResourceData, meta inter
 		docs = append(docs, doc)
 	}
 
-	row, err := db.BulkDocs(ctx, docs)
+	body := database.BulkDocsBody{
+		Docs: docs,
+	}
+
+	params := database.NewBulkDocsParams().WithDb(dbName).WithBody(body)
+	created, err := client.Database.BulkDocs(params)
 	if err != nil {
 		return AppendDiagnostic(diags, err, "Unable to bulk delete documents")
 	}
-	defer row.Close()
 
-	if ok := row.Next(); ok {
-		if row.UpdateErr() != nil {
-			AppendDiagnosticWarning(diags, row.UpdateErr(), fmt.Sprintf("Unable to delete document: %s", row.ID()))
+	for _, item := range created.Payload {
+		if item.Ok {
+			delete(revisions, item.ID)
 		}
-
-		delete(revisions, row.ID())
 	}
 
 	byt, err := json.Marshal(revisions)
@@ -171,14 +168,6 @@ func bulkDocumentsRead(ctx context.Context, d *schema.ResourceData, meta interfa
 
 	dbName := d.Get("database").(string)
 
-	db, dd := connectToDB(ctx, client, dbName)
-	if dd != nil {
-		return append(diags, *dd)
-	}
-	defer db.Close(ctx)
-
-	var bulkRev []kivik.BulkGetReference
-
 	var revisions map[string]string
 	err := json.Unmarshal([]byte(d.Id()), &revisions)
 
@@ -186,34 +175,37 @@ func bulkDocumentsRead(ctx context.Context, d *schema.ResourceData, meta interfa
 		return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
 	}
 
-	for id, _ := range revisions {
-		ref := kivik.BulkGetReference{
+	docs := []*models.BasicDoc{}
+	for id, rev := range revisions {
+		ref := &models.BasicDoc{
 			ID: id,
+			Rev: rev,
 		}
-		bulkRev = append(bulkRev, ref)
+		docs = append(docs, ref)
 	}
 
-	rows, err := db.BulkGet(ctx, bulkRev)
+	body := database.BulkGetBody{
+		Docs: docs,
+	}
+
+	params := database.NewBulkGetParams().WithDb(dbName).WithBody(body)
+	created, err := client.Database.BulkGet(params)
 	if err != nil {
-		return AppendDiagnostic(diags, err, "Unable to read documents")
-	}
-	defer rows.Close()
-
-	if rows.Err() != nil {
-		diags = append(diags, diag.Diagnostic{
-			Severity: diag.Warning,
-			Summary:  rows.Err().Error(),
-		})
+		return AppendDiagnostic(diags, err, "Unable to bulk read documents")
 	}
 
 	revisions = map[string]string{}
-	if ok := rows.Next(); ok {
-
-		var raw map[string]interface{}
-		if err := rows.ScanDoc(&raw); err == nil {
-			revisions[rows.ID()] = raw["_rev"].(string)
-		} else {
-			return AppendDiagnostic(diags, err, fmt.Sprintf("Unable to read document: %s", rows.ID()))
+	for _, item := range created.Payload.Results {
+		// docs contains a single-item array of objects,
+		// each of which has either an error key and value describing the error,
+		//or ok key and associated value of the requested document
+		if len(item.Docs) > 0 {
+			if item.Docs[0].Ok != nil {
+				doc := item.Docs[0].Ok.(map[string]interface{})
+				revisions[item.ID] = doc["_rev"].(string)
+			} else {
+				AppendDiagnostic(diags, fmt.Errorf(item.Docs[0].Error.Error), fmt.Sprintf("%s id: %s, rev: %s", item.Docs[0].Error.Reason, item.Docs[0].Error.ID, item.Docs[0].Error.Rev))
+			}
 		}
 	}
 
@@ -235,15 +227,8 @@ func bulkDocumentsCreate(ctx context.Context, d *schema.ResourceData, meta inter
 
 	dbName := d.Get("database").(string)
 
-	db, dd := connectToDB(ctx, client, dbName)
-	if dd != nil {
-		return append(diags, *dd)
-	}
-	defer db.Close(ctx)
-
-	var docs []interface{}
+	var docs []models.Document
 	err := json.Unmarshal([]byte(d.Get("docs").(string)), &docs)
-
 	if err != nil {
 		return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
 	}
@@ -262,20 +247,19 @@ func bulkDocumentsCreate(ctx context.Context, d *schema.ResourceData, meta inter
 		}
 	}
 
-	row, err := db.BulkDocs(ctx, docs)
+	body := database.BulkDocsBody{
+		Docs: docs,
+	}
+
+	params := database.NewBulkDocsParams().WithDb(dbName).WithBody(body)
+	created, err := client.Database.BulkDocs(params)
 	if err != nil {
 		return AppendDiagnostic(diags, err, "Unable to bulk create documents")
 	}
-	defer row.Close()
 
 	revisions := map[string]string{}
-
-	if ok := row.Next(); ok {
-		if row.UpdateErr() != nil {
-			AppendDiagnosticWarning(diags, row.UpdateErr(), fmt.Sprintf("Unable to read document: %s", row.ID()))
-		} else {
-			revisions[row.ID()] = row.Rev()
-		}
+	for _, item := range created.Payload {
+		revisions[item.ID] = item.Rev
 	}
 
 	byt, err := json.Marshal(revisions)

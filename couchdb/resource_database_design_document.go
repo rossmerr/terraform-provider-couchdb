@@ -4,6 +4,8 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/RossMerr/couchdb_go/client/design_documents"
+	"github.com/RossMerr/couchdb_go/models"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -61,12 +63,6 @@ func designDocumentCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	dbName := d.Get("database").(string)
 
-	db, dd := connectToDB(ctx, client, dbName)
-	if dd != nil {
-		return append(diags, *dd)
-	}
-	defer db.Close(ctx)
-
 	docId := fmt.Sprintf("_design/%s", d.Get("name").(string))
 
 	viewsDoc := map[string]interface{}{}
@@ -83,18 +79,19 @@ func designDocumentCreate(ctx context.Context, d *schema.ResourceData, meta inte
 		}
 	}
 
-	doc := map[string]interface{}{}
-	doc["views"] = viewsDoc
-	doc["indexes"] = indexesDoc
-	doc["_id"] = docId
-	doc["language"] = d.Get("language").(string)
+	designDoc := &models.DesignDoc{
+		Language:  d.Get("language").(string),
+		Views: viewsDoc,
+		Indexes: indexesDoc,
+	}
 
-	rev, err := db.Put(ctx, docId, doc)
+	params := design_documents.NewDesignDocPutParams().WithDb(dbName).WithBody(designDoc).WithDdoc(docId)
+	ok, err := client.DesignDocuments.DesignDocPut(params)
 	if err != nil {
 		return AppendDiagnostic(diags, fmt.Errorf("%s \nDesign Doc:- \n%s", err.Error(), d.Get("view").(string)), "Unable to create design doc")
 	}
 
-	d.Set("revision", rev)
+	d.Set("revision", ok.ETag)
 
 	d.SetId(docId)
 
@@ -106,45 +103,30 @@ func designDocumentRead(ctx context.Context, d *schema.ResourceData, meta interf
 	if dd != nil {
 		return append(diags, *dd)
 	}
-
 	dbName := d.Get("database").(string)
-	db, dd := connectToDB(ctx, client, dbName)
-	if dd != nil {
-		return append(diags, *dd)
-	}
-	defer db.Close(ctx)
-
 	docId := fmt.Sprintf("_design/%s", d.Get("name").(string))
+	rev := d.Get("revision").(string)
 
-	row := db.Get(ctx, docId)
-
-	var designDoc tdesignDoc
-	if err := row.ScanDoc(&designDoc); err != nil {
-		return diag.FromErr(err)
+	params := design_documents.NewDesignDocGetParams().WithDb(dbName).WithDdoc(docId).WithRev(&rev)
+	ok, err := client.DesignDocuments.DesignDocGet(params)
+	if err != nil {
+		return AppendDiagnostic(diags, err, "Unable to read Design Document")
 	}
 
-	d.Set("language", designDoc.Language)
+	if ok.Payload != nil {
+		designDoc := ok.Payload.(map[string]interface{})
+		d.Set("language", designDoc["language"].(string))
 
-	if designDoc.Views != nil {
-		b, err := json.Marshal(designDoc.Views)
-		if err != nil {
-			return diag.FromErr(err)
+		if views, ok := designDoc["views"]; ok {
+			d.Set("views", views.(string))
 		}
-		d.Set("views", string(b))
-	}
 
-	if designDoc.Indexes != nil {
-		b, err := json.Marshal(designDoc.Indexes)
-		if err != nil {
-			return diag.FromErr(err)
+		if views, ok := designDoc["indexes"]; ok {
+			d.Set("indexes", views.(string))
 		}
-		d.Set("indexes", string(b))
 	}
 
-	d.Set("revision", row.Rev)
-
-
-
+	d.Set("revision", ok.ETag)
 	return diags
 }
 
@@ -155,11 +137,6 @@ func designDocumentUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 
 	dbName := d.Get("database").(string)
-	db, dd := connectToDB(ctx, client, dbName)
-	if dd != nil {
-		return append(diags, *dd)
-	}
-	defer db.Close(ctx)
 
 	viewsDoc := map[string]interface{}{}
 	if interfaceViews, ok := d.GetOk("views"); ok {
@@ -176,19 +153,21 @@ func designDocumentUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 
 
-	doc := map[string]interface{}{}
-	doc["_rev"] = d.Get("revision").(string)
-	doc["views"] = viewsDoc
-	doc["indexes"] = indexesDoc
-	doc["_id"] = d.Id()
-	doc["language"] = d.Get("language").(string)
+	designDoc := &models.DesignDoc{
+		Language:  d.Get("language").(string),
+		Views: viewsDoc,
+		Indexes: indexesDoc,
+	}
 
-	rev, err := db.Put(ctx, d.Id(), doc)
+	params := design_documents.NewDesignDocPutParams().WithDb(dbName).WithBody(designDoc).WithDdoc(d.Id())
+	ok, err := client.DesignDocuments.DesignDocPut(params)
+
 	if err != nil {
 		return AppendDiagnostic(diags, fmt.Errorf("%s \nDesign Doc:- \n%s", err.Error(), d.Get("view").(string)), "Unable to update design doc")
 	}
 
-	d.Set("revision", rev)
+
+	d.Set("revision", ok.ETag)
 
 	return diags
 }
@@ -200,20 +179,21 @@ func designDocumentDelete(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 
 	dbName := d.Get("database").(string)
-	db, dd := connectToDB(ctx, client, dbName)
-	if dd != nil {
-		return append(diags, *dd)
-	}
-	defer db.Close(ctx)
 
-	rev, err := db.Delete(ctx, d.Id(), d.Get("revision").(string))
-
+	params := design_documents.NewDesignDocDeleteParams().WithDb(dbName).WithDdoc(d.Id())
+	ok, accepted, err := client.DesignDocuments.DesignDocDelete(params)
 	if err != nil {
 		return AppendDiagnostic(diags, fmt.Errorf("docID: %s \nrev: %s \n%s", d.Id(), d.Get("revision").(string), err.Error()), "Unable to delete design doc")
 	}
 
 	d.SetId("")
-	d.Set("revision", rev)
+	if ok != nil {
+		d.Set("revision", ok.ETag)
+	}
+
+	if accepted != nil {
+		d.Set("revision", accepted.ETag)
+	}
 
 	return diags
 }

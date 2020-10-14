@@ -3,7 +3,7 @@ package couchdb
 import (
 	"context"
 	"encoding/json"
-	"github.com/go-kivik/kivik/v3"
+	"github.com/RossMerr/couchdb_go/client/document"
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -56,12 +56,6 @@ func documentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{
 
 	dbName := d.Get("database").(string)
 
-	db, dd := connectToDB(ctx, client, dbName)
-	if dd != nil {
-		return append(diags, *dd)
-	}
-	defer db.Close(ctx)
-
 	docId := d.Id()
 	doc := map[string]interface{}{}
 	err := json.Unmarshal([]byte(d.Get("doc").(string)), &doc)
@@ -70,18 +64,26 @@ func documentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{
 		AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
 	}
 
-	options := kivik.Options{}
+	rev := d.Get("revision").(string)
+
+	batch := ""
 	if d.Get("batch").(bool) {
-		options["batch"] = true
+		batch = "ok"
 	}
 
-	doc["_rev"] = d.Get("revision").(string)
-
-	rev, err := db.Put(ctx, docId, doc, options)
+	params := document.NewDocPutParams().WithDb(dbName).WithDocid(docId).WithRev(&rev).WithBatch(&batch).WithBody(doc)
+	created, accepted, err := client.Document.DocPut(params)
 	if err != nil {
 		AppendDiagnostic(diags, err, "Unable to update Document")
 	}
-	d.Set("revision", rev)
+
+	if created != nil {
+		d.Set("revision", created.ETag)
+	}
+
+	if accepted != nil {
+		d.Set("revision", accepted.ETag)
+	}
 
 	return documentRead(ctx, d, meta)
 }
@@ -93,23 +95,23 @@ func documentDelete(ctx context.Context, d *schema.ResourceData, meta interface{
 	}
 
 	dbName := d.Get("database").(string)
-
-	db, dd := connectToDB(ctx, client, dbName)
-	if dd != nil {
-		return append(diags, *dd)
-	}
-	defer db.Close(ctx)
-
 	rev := d.Get("revision").(string)
 
-	rev, err := db.Delete(ctx, d.Id(), rev)
-
+	params := document.NewDocDeleteParams().WithDb(dbName).WithRev(&rev).WithDocid(d.Id())
+	ok, accepted, err := client.Document.DocDelete(params)
 	if err != nil {
 		AppendDiagnostic(diags, err, "Unable to delete Document")
 	}
 
 	d.SetId("")
-	d.Set("revision", rev)
+
+	if ok != nil {
+		d.Set("revision", ok.ETag)
+	}
+
+	if accepted != nil {
+		d.Set("revision", accepted.ETag)
+	}
 
 	return diags
 }
@@ -122,21 +124,15 @@ func documentRead(ctx context.Context, d *schema.ResourceData, meta interface{})
 
 	dbName := d.Get("database").(string)
 
-	db, dd := connectToDB(ctx, client, dbName)
-	if dd != nil {
-		return append(diags, *dd)
-	}
-	defer db.Close(ctx)
-
-	row := db.Get(ctx, d.Id())
-
-	var doc map[string]interface{}
-
-	if err := row.ScanDoc(&doc); err != nil {
+	params := document.NewDocGetParams().WithDb(dbName).WithDocid(d.Id())
+	ok, err := client.Document.DocGet(params)
+	if err != nil {
 		AppendDiagnostic(diags, err, "Unable to read Document")
 	}
 
-	d.Set("revision", row.Rev)
+	doc := ok.Payload.(map[string]interface{})
+
+	d.Set("revision", ok.ETag)
 
 	raw, err := json.Marshal(doc)
 
@@ -156,37 +152,37 @@ func documentCreate(ctx context.Context, d *schema.ResourceData, meta interface{
 	}
 
 	dbName := d.Get("database").(string)
-
-	db, dd := connectToDB(ctx, client, dbName)
-	if dd != nil {
-		return append(diags, *dd)
-	}
-	defer db.Close(ctx)
-
 	docId := d.Get("docid").(string)
 	if docId == "" {
 		docId = uuid.New().String()
 	}
 
+	batch := ""
+	if d.Get("batch").(bool) {
+		batch = "ok"
+	}
+
 	doc := map[string]interface{}{}
 	err := json.Unmarshal([]byte(d.Get("doc").(string)), &doc)
-
 	if err != nil {
 		return AppendDiagnostic(diags, err, "Unable to unmarshal JSON")
 	}
 
-	options := kivik.Options{}
-	if d.Get("batch").(bool) {
-		options["batch"] = true
-	}
-
-	rev, err := db.Put(ctx, docId, doc, options)
+	params := document.NewDocPutParams().WithDb(dbName).WithBody(doc).WithBatch(&batch).WithDocid(docId)
+	created, accepted, err := client.Document.DocPut(params)
 	if err != nil {
 		return AppendDiagnostic(diags, err, "Unable to create to Document")
 	}
 
-	d.Set("revision", rev)
 	d.SetId(docId)
+
+	if created != nil && created.Payload.Ok {
+		d.Set("revision", created.Payload.Rev)
+	}
+
+	if accepted != nil && accepted.Payload.Ok {
+		d.Set("revision", accepted.Payload.Rev)
+	}
 
 	return documentRead(ctx, d, meta)
 }

@@ -3,10 +3,9 @@ package couchdb
 import (
 	"context"
 	"fmt"
-	"net/http"
+	"github.com/RossMerr/couchdb_go/client/design_documents"
 	"testing"
 
-	"github.com/go-kivik/kivik/v3"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
@@ -50,11 +49,11 @@ func testAccCouchDBDesignDocumentExists(n string) resource.TestCheckFunc {
 			return fmt.Errorf(dd.Detail)
 		}
 
-		db := client.DB(context.Background(), rs.Primary.Attributes["database"])
-		row := db.Get(context.Background(), rs.Primary.ID)
+		params := design_documents.NewDesignDocExistsParams().WithDb(rs.Primary.Attributes["database"]).WithDdoc(rs.Primary.ID)
+		_, err := client.DesignDocuments.DesignDocExists(params)
 
-		if row.Err != nil {
-			return row.Err
+		if err != nil {
+			return err
 		}
 
 		return nil
@@ -72,18 +71,11 @@ func testAccCouchDBDesignDocumentDestroy(s *terraform.State) error {
 			return fmt.Errorf(dd.Detail)
 		}
 
-		db := client.DB(context.Background(), rs.Primary.Attributes["database"])
-		row := db.Get(context.Background(), rs.Primary.ID)
-
-		var ddoc map[string]interface{}
-		if err := row.ScanDoc(&ddoc); err != nil {
-			switch kivik.StatusCode(err) {
-			case http.StatusNotFound:
-				return nil
-			}
-			return err
+		params := design_documents.NewDesignDocExistsParams().WithDb(rs.Primary.Attributes["database"]).WithDdoc(rs.Primary.ID)
+		_, err := client.DesignDocuments.DesignDocExists(params)
+		if err == nil {
+			return fmt.Errorf("design document still exists")
 		}
-
 	}
 
 	return nil

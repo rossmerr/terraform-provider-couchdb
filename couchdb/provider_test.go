@@ -2,12 +2,13 @@ package couchdb
 
 import (
 	"context"
-	"fmt"
+	apiclient "github.com/RossMerr/couchdb_go/client"
+	"github.com/RossMerr/couchdb_go/client/server"
+	httptransport "github.com/go-openapi/runtime/client"
+	"github.com/go-openapi/strfmt"
 	"os"
 	"testing"
 
-	"github.com/go-kivik/couchdb/v3"
-	"github.com/go-kivik/kivik/v3"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
@@ -50,27 +51,15 @@ func testAccPreCheck(t *testing.T) {
 	}
 }
 
-func testAccCouchDBUserWorks(endpoint, username, password, expectedRole string) error {
-	client, err := kivik.New("couch", endpoint)
+func testAccCouchDBUserWorks(endpoint, username, password string) error {
+	transport := httptransport.New(endpoint, "", []string{"http"})
+	transport.DefaultAuthentication = httptransport.BasicAuth(username, password)
+	client := apiclient.New(transport, strfmt.Default)
+
+	_, err := client.Server.Up(server.NewUpParams())
 	if err != nil {
 		return err
 	}
 
-	err = client.Authenticate(context.Background(), couchdb.BasicAuth(username, password))
-	if err != nil {
-		return err
-	}
-
-	sess, err := client.Session(context.Background())
-	if err != nil {
-		return err
-	}
-
-	if sess.Name != username {
-		return fmt.Errorf("expected user %s, but got %s", username, sess.Name)
-	}
-	if sess.Roles[0] != expectedRole {
-		return fmt.Errorf("expected user role %s, but got %s", expectedRole, sess.Roles)
-	}
 	return nil
 }

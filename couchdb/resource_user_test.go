@@ -3,10 +3,9 @@ package couchdb
 import (
 	"context"
 	"fmt"
-	"net/http"
+	"github.com/RossMerr/couchdb_go/client/document"
 	"testing"
 
-	"github.com/go-kivik/kivik/v3"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
 )
@@ -44,15 +43,14 @@ func testAccCouchDBUserExists(n string) resource.TestCheckFunc {
 			return fmt.Errorf(dd.Detail)
 		}
 
-		db := client.DB(context.Background(), usersDB)
+		params := document.NewDocInfoParams().WithDb(usersDB).WithDocid(rs.Primary.ID)
+		_, err := client.Document.DocInfo(params)
 
-		row := db.Get(context.Background(), rs.Primary.ID)
-		var user tuser
-		if err := row.ScanDoc(&user); err != nil {
+		if  err != nil {
 			return err
 		}
 
-		return testAccCouchDBUserWorks(client.DSN(), rs.Primary.Attributes["name"], rs.Primary.Attributes["password"], "developer")
+		return testAccCouchDBUserWorks(rs.Primary.Attributes["endpoint"], rs.Primary.Attributes["name"], rs.Primary.Attributes["password"])
 	}
 }
 
@@ -67,17 +65,11 @@ func testAccCouchDBUserDestroy(s *terraform.State) error {
 			return fmt.Errorf(dd.Detail)
 		}
 
-		db := client.DB(context.Background(), usersDB)
+		params := document.NewDocInfoParams().WithDb(rs.Primary.Attributes["database"]).WithDocid(rs.Primary.ID)
+		_, err := client.Document.DocInfo(params)
 
-		row := db.Get(context.Background(), rs.Primary.ID)
-
-		var user tuser
-		if err := row.ScanDoc(&user); err != nil {
-			switch kivik.StatusCode(err) {
-			case http.StatusNotFound:
-				return nil
-			}
-			return err
+		if err == nil {
+			return fmt.Errorf("user still exists")
 		}
 	}
 

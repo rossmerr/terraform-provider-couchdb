@@ -2,15 +2,17 @@ package couchdb
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
+	"github.com/RossMerr/couchdb_go/client/document"
 
-	"github.com/go-kivik/kivik/v3"
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
 
 const usersDB = "_users"
+const userPrefix = "org.couchdb.user:"
 
 func resourceUser() *schema.Resource {
 	return &schema.Resource{
@@ -53,23 +55,27 @@ func userCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) (
 		return append(diags, *dd)
 	}
 
-	db, dd := connectToDB(ctx, client, usersDB)
-	if dd != nil {
-		return append(diags, *dd)
-	}
-	defer db.Close(ctx)
 
 	user := &tuser{
-		ID:       kivik.UserPrefix + uuid.New().String(),
+		ID:       userPrefix + uuid.New().String(),
 		Name:     d.Get("name").(string),
 		Type:     "user",
 		Roles:    stringsFromSet(d.Get("roles")),
 		Password: d.Get("password").(string),
 	}
 
-	_, err := db.Put(ctx, user.ID, user)
+	params := document.NewPostParams().WithDb(usersDB).WithBody(user)
+	created, accepted, err := client.Document.Post(params)
 	if err != nil {
-		return AppendDiagnostic(diags, err, "Unable to create User")
+		return AppendDiagnostic(diags, err, "Unable to create to Document")
+	}
+
+	if created != nil && created.Payload.Ok {
+		d.Set("revision", created.Payload.Rev)
+	}
+
+	if accepted != nil && accepted.Payload.Ok {
+		d.Set("revision", accepted.Payload.Rev)
 	}
 
 	d.SetId(user.ID)
@@ -82,21 +88,26 @@ func userRead(ctx context.Context, d *schema.ResourceData, meta interface{}) (di
 		return append(diags, *dd)
 	}
 
-	db, dd := connectToDB(ctx, client, usersDB)
-	if dd != nil {
-		return append(diags, *dd)
-	}
-	defer db.Close(ctx)
 
-	row := db.Get(ctx, d.Id())
+	params := document.NewDocGetParams().WithDb(usersDB).WithDocid(d.Id())
+	ok, err := client.Document.DocGet(params)
+	if err != nil {
+		return AppendDiagnostic(diags, err, "Unable to read Document")
+	}
+
+	doc := ok.Payload.(map[string]interface{})
+
+	d.Set("revision", ok.ETag)
+
+	raw, err := json.Marshal(doc)
 
 	var user tuser
-	if err := row.ScanDoc(&user); err != nil {
-		diags = AppendDiagnostic(diags, err, "Unable to read User")
-		return diags
+	err = json.Unmarshal(raw, &user)
+	if err != nil {
+		return AppendDiagnostic(diags, err, "Unable to read User")
 	}
 
-	d.Set("revision", row.Rev)
+	d.Set("revision", ok.ETag)
 	d.Set("roles", user.Roles)
 
 	return diags
@@ -108,12 +119,6 @@ func userUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) (
 		return append(diags, *dd)
 	}
 
-	db, dd := connectToDB(ctx, client, usersDB)
-	if dd != nil {
-		return append(diags, *dd)
-	}
-	defer db.Close(ctx)
-
 	user := &tuser{
 		ID:       d.Id(),
 		Name:     d.Get("name").(string),
@@ -123,9 +128,19 @@ func userUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) (
 		Revision: d.Get("revision").(string),
 	}
 
-	_, err := db.Put(ctx, user.ID, user)
+	rev := d.Get("revision").(string)
+	params := document.NewDocPutParams().WithDb(usersDB).WithDocid(d.Id()).WithRev(&rev).WithBody(user)
+	created, accepted, err := client.Document.DocPut(params)
 	if err != nil {
-		return AppendDiagnostic(diags, err, "Unable to update User")
+		AppendDiagnostic(diags, err, "Unable to update Document")
+	}
+
+	if created != nil {
+		d.Set("revision", created.ETag)
+	}
+
+	if accepted != nil {
+		d.Set("revision", accepted.ETag)
 	}
 
 	return userRead(ctx, d, meta)
@@ -137,17 +152,23 @@ func userDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) (
 		return append(diags, *dd)
 	}
 
-	db, dd := connectToDB(ctx, client, usersDB)
-	if dd != nil {
-		return append(diags, *dd)
-	}
-	defer db.Close(ctx)
+	rev := d.Get("revision").(string)
 
-	_, err := db.Delete(ctx, d.Id(), d.Get("revision").(string))
+	params := document.NewDocDeleteParams().WithDb(usersDB).WithRev(&rev).WithDocid(d.Id())
+	ok, accepted, err := client.Document.DocDelete(params)
 	if err != nil {
 		return AppendDiagnostic(diags, fmt.Errorf("docID: %s \nrev: %s \n%s", d.Id(), d.Get("revision").(string), err.Error()), "Unable to delete User")
 	}
+
 	d.SetId("")
+
+	if ok != nil {
+		d.Set("revision", ok.ETag)
+	}
+
+	if accepted != nil {
+		d.Set("revision", accepted.ETag)
+	}
 
 	return diags
 }

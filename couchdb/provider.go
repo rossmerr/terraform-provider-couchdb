@@ -3,10 +3,12 @@ package couchdb
 import (
 	"context"
 	"fmt"
+	"github.com/RossMerr/couchdb_go/client/server"
+	"github.com/go-openapi/strfmt"
 	"time"
 
-	"github.com/go-kivik/couchdb/v3"
-	"github.com/go-kivik/kivik/v3"
+	apiclient "github.com/RossMerr/couchdb_go/client"
+	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
@@ -15,10 +17,9 @@ import (
 
 type CouchDBConfiguration struct {
 	Endpoint        string
+	Scheme          string
 	Username        string
 	Password        string
-	MaxConnLifetime time.Duration
-	MaxOpenConns    int
 }
 
 func Provider() *schema.Provider {
@@ -41,6 +42,12 @@ func Provider() *schema.Provider {
 
 					return diags
 				},
+			},
+			"scheme": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "http",
+				ForceNew: true,
 			},
 			"username": {
 				Type:        schema.TypeString,
@@ -74,28 +81,23 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		Endpoint: d.Get("endpoint").(string),
 		Username: d.Get("username").(string),
 		Password: d.Get("password").(string),
+		Scheme:   d.Get("scheme").(string),
 	}, diags
 }
 
-func connectToCouchDB(ctx context.Context, conf *CouchDBConfiguration) (*kivik.Client, *diag.Diagnostic) {
-	var client *kivik.Client
+func connectToCouchDB(ctx context.Context, conf *CouchDBConfiguration) (*apiclient.CouchdbGo, *diag.Diagnostic) {
+	var client *apiclient.CouchdbGo
 	var err error
 	// When provisioning a database server there can often be a lag between
 	// when Terraform thinks it's available and when it is actually available.
 	// This is particularly acute when provisioning a server and then immediately
 	// trying to provision a database on it.
 	retryError := resource.RetryContext(ctx, 5*time.Minute, func() *resource.RetryError {
-		client, err = kivik.New("couch", conf.Endpoint)
-		if err != nil {
-			return resource.RetryableError(err)
-		}
+		transport := httptransport.New(conf.Endpoint, "", []string{conf.Scheme})
+		transport.DefaultAuthentication = httptransport.BasicAuth(conf.Username, conf.Password)
+		client = apiclient.New(transport, strfmt.Default)
 
-		_, err = client.Ping(context.Background())
-		if err != nil {
-			return resource.RetryableError(err)
-		}
-
-		err := client.Authenticate(ctx, couchdb.BasicAuth(conf.Username, conf.Password))
+		_, err = client.Server.Up(server.NewUpParams())
 		if err != nil {
 			return resource.RetryableError(err)
 		}
@@ -112,18 +114,4 @@ func connectToCouchDB(ctx context.Context, conf *CouchDBConfiguration) (*kivik.C
 	}
 
 	return client, nil
-}
-
-func connectToDB(ctx context.Context, client *kivik.Client, dbName string) (*kivik.DB, *diag.Diagnostic) {
-	db := client.DB(ctx, dbName)
-
-	if db.Err() != nil {
-		return db, &diag.Diagnostic{
-			Severity: diag.Error,
-			Summary:  "Unable to connect to DB",
-			Detail:   fmt.Sprintf("Could not connect to server: %s", db.Err()),
-		}
-	}
-
-	return db, nil
 }

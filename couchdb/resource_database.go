@@ -3,7 +3,7 @@ package couchdb
 import (
 	"context"
 	"fmt"
-	"github.com/go-kivik/kivik/v3"
+	"github.com/RossMerr/couchdb_go/client/database"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -30,40 +30,6 @@ func resourceDatabase() *schema.Resource {
 				Default:     false,
 				ForceNew:    true,
 				Description: "Whether to create a partitioned database",
-			},
-			"security": {
-				Type:        schema.TypeList,
-				MaxItems:    1,
-				Optional:    true,
-				Description: "Security configuration of the database",
-				Elem: &schema.Resource{
-					Schema: map[string]*schema.Schema{
-						"admins": {
-							Type:        schema.TypeSet,
-							Optional:    true,
-							Elem:        &schema.Schema{Type: schema.TypeString},
-							Description: "Database administrators",
-						},
-						"admin_roles": {
-							Type:        schema.TypeSet,
-							Optional:    true,
-							Elem:        &schema.Schema{Type: schema.TypeString},
-							Description: "Database administration roles",
-						},
-						"members": {
-							Type:        schema.TypeSet,
-							Optional:    true,
-							Elem:        &schema.Schema{Type: schema.TypeString},
-							Description: "Database members",
-						},
-						"member_roles": {
-							Type:        schema.TypeSet,
-							Optional:    true,
-							Elem:        &schema.Schema{Type: schema.TypeString},
-							Description: "Database member roles",
-						},
-					},
-				},
 			},
 			"clustering": {
 				Type:        schema.TypeList,
@@ -97,15 +63,20 @@ func resourceDatabase() *schema.Resource {
 				Computed:    true,
 				Description: "Number of tombstones in database",
 			},
-			"disk_size": {
+			"sizes_active": {
 				Type:        schema.TypeInt,
 				Computed:    true,
-				Description: "Size of storage disk",
+				Description: "The size of live data inside the database, in bytes.",
 			},
-			"data_size": {
+			"sizes_external": {
 				Type:        schema.TypeInt,
 				Computed:    true,
-				Description: "Size of database data",
+				Description: "The uncompressed size of database contents in bytes.",
+			},
+			"size_file": {
+				Type:        schema.TypeInt,
+				Computed:    true,
+				Description: "The size of the database file on disk in bytes. Views indexes are not included in the calculation",
 			},
 		},
 	}
@@ -118,71 +89,21 @@ func createDatabase(ctx context.Context, d *schema.ResourceData, meta interface{
 	}
 
 	dbName := d.Get("name").(string)
-	options := extractClusterOptions(d.Get("clustering"))
-	options["partitioned"] = d.Get("partitioned").(bool)
+	shards, replicas := extractClusterOptions(d.Get("clustering"))
+	partitioned := d.Get("partitioned").(bool)
 
-	err := client.CreateDB(ctx, dbName, options)
+	params := database.NewPutParams().WithDb(dbName).WithN(replicas).WithQ(shards).WithPartitioned(&partitioned)
+	_, _, err := client.Database.Put(params)
 	if err != nil {
 		return AppendDiagnostic(diags, err, "Unable to create DB")
 	}
 
 	d.SetId(dbName)
 
-	// You can't edit the security object of the user database.
-	if dbName == usersDB {
-		return readDatabase(ctx, d, meta)
-	}
-
-	if v, ok := d.GetOk("security"); ok {
-		vs := v.([]interface{})
-		if len(vs) == 1 {
-			db := client.DB(ctx, dbName)
-			err := db.SetSecurity(ctx, extractDatabaseSecurity(vs[0]))
-			if err != nil {
-				return AppendDiagnostic(diags, err, "Unable to set security on DB")
-			}
-		}
-	}
-
 	return readDatabase(ctx, d, meta)
 }
 
 func updateDatabase(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
-	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
-	if dd != nil {
-		return append(diags, *dd)
-	}
-
-	dbName := d.Get("name").(string)
-
-	// You can't edit the security object of the user database.
-	if dbName == usersDB {
-		return readDatabase(ctx, d, meta)
-	}
-
-	if d.HasChange("security") {
-		db, dd := connectToDB(ctx, client, dbName)
-		if dd != nil {
-			return append(diags, *dd)
-		}
-		defer db.Close(ctx)
-
-		if v, ok := d.GetOk("security"); ok {
-			vs := v.([]interface{})
-			if len(vs) == 1 {
-				err := db.SetSecurity(ctx, extractDatabaseSecurity(vs[0]))
-				if err != nil {
-					return AppendDiagnostic(diags, err, "Unable to update security on DB")
-				}
-			}
-		} else {
-			err := db.SetSecurity(ctx, &kivik.Security{})
-			if err != nil {
-				return AppendDiagnostic(diags, err, "Unable to clear security on DB")
-			}
-		}
-	}
-
 	return readDatabase(ctx, d, meta)
 }
 
@@ -193,28 +114,19 @@ func readDatabase(ctx context.Context, d *schema.ResourceData, meta interface{})
 	}
 
 	dbName := d.Id()
-	dbStates, err := client.DBsStats(ctx, []string{dbName})
+
+	params := database.NewGetParams().WithDb(dbName)
+	response, err := client.Database.Get(params)
 	if err != nil {
 		return AppendDiagnostic(diags, err, "Unable to read DB states")
 	}
 
-	if len(dbStates) > 0 {
-		state := dbStates[0]
-		d.Set("document_count", int(state.DocCount))
-		d.Set("document_deletion_count", int(state.DeletedCount))
-		d.Set("disk_size", int(state.DiskSize))
-		d.Set("data_size", int(state.ActiveSize))
-	}
-
-	db, dd := connectToDB(ctx, client, dbName)
-	if dd != nil {
-		return append(diags, *dd)
-	}
-	defer db.Close(ctx)
-
-	// You can't edit the security object of the user database.
-	if dbName == usersDB {
-		return diags
+	if response != nil && response.Payload != nil {
+		d.Set("document_count", int(response.Payload.DocCount))
+		d.Set("document_deletion_count", int(response.Payload.DocDelCount))
+		d.Set("sizes_active", int(response.Payload.Sizes.Active))
+		d.Set("sizes_external", int(response.Payload.Sizes.External))
+		d.Set("size_file", int(response.Payload.Sizes.File))
 	}
 
 	return diags
@@ -227,7 +139,9 @@ func deleteDatabase(ctx context.Context, d *schema.ResourceData, meta interface{
 	}
 
 	dbName := d.Id()
-	err := client.DestroyDB(ctx, dbName)
+
+	params := database.NewDeleteParams().WithDb(dbName)
+	_ ,_, err := client.Database.Delete(params)
 	if err == nil {
 		d.SetId("")
 		return diags
@@ -236,32 +150,14 @@ func deleteDatabase(ctx context.Context, d *schema.ResourceData, meta interface{
 	return AppendDiagnostic(diags, fmt.Errorf("dbName: %s \n%s", dbName, err.Error()), "Unable to delete DB")
 }
 
-func extractClusterOptions(v interface{}) kivik.Options {
-	ret := kivik.Options{}
+func extractClusterOptions(v interface{}) (*int32, *int32) {
 	vs := v.([]interface{})
 	if len(vs) != 1 {
-		return ret
+		return nil, nil
 	}
 	vi := vs[0].(map[string]interface{})
-	ret["replicas"] = vi["replicas"].(int)
-	ret["shards"] = vi["shards"].(int)
-	return ret
+	replicas := int32(vi["replicas"].(int))
+	shards := int32(vi["shards"].(int))
+	return &shards, &replicas
 }
 
-func extractDatabaseSecurity(d interface{}) *kivik.Security {
-	security, ok := d.(map[string]interface{})
-	if !ok {
-		return &kivik.Security{}
-	}
-
-	return &kivik.Security{
-		Admins: kivik.Members{
-			Names: stringsFromSet(security["admins"]),
-			Roles: stringsFromSet(security["admin_roles"]),
-		},
-		Members: kivik.Members{
-			Names: stringsFromSet(security["members"]),
-			Roles: stringsFromSet(security["member_roles"]),
-		},
-	}
-}

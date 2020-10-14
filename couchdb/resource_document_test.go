@@ -3,10 +3,9 @@ package couchdb
 import (
 	"context"
 	"fmt"
-	"github.com/go-kivik/kivik/v3"
+	"github.com/RossMerr/couchdb_go/client/document"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"net/http"
 	"testing"
 )
 
@@ -43,11 +42,12 @@ func testAccCouchDBDocumentExists(n string) resource.TestCheckFunc {
 			return fmt.Errorf(dd.Detail)
 		}
 
-		db := client.DB(context.Background(), rs.Primary.Attributes["database"])
-		row := db.Get(context.Background(), rs.Primary.ID)
 
-		if row.Err != nil {
-			return row.Err
+		params := document.NewDocInfoParams().WithDb(rs.Primary.Attributes["database"]).WithDocid(rs.Primary.ID)
+		_, err := client.Document.DocInfo(params)
+
+		if err != nil {
+			return err
 		}
 
 		return nil
@@ -65,18 +65,12 @@ func testAccCouchDBDocumentDestroy(s *terraform.State) error {
 			return fmt.Errorf(dd.Detail)
 		}
 
-		db := client.DB(context.Background(), rs.Primary.Attributes["database"])
-		row := db.Get(context.Background(), rs.Primary.ID)
+		params := document.NewDocInfoParams().WithDb(rs.Primary.Attributes["database"]).WithDocid(rs.Primary.ID)
+		_, err := client.Document.DocInfo(params)
 
-		var ddoc map[string]interface{}
-		if err := row.ScanDoc(&ddoc); err != nil {
-			switch kivik.StatusCode(err) {
-			case http.StatusNotFound:
-				return nil
-			}
-			return err
+		if err == nil {
+			return fmt.Errorf("document still exists")
 		}
-
 	}
 
 	return nil

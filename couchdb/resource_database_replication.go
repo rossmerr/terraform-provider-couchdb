@@ -2,11 +2,17 @@ package couchdb
 
 import (
 	"context"
-
-	"github.com/go-kivik/kivik/v3"
+	"encoding/json"
+	"github.com/RossMerr/couchdb_go/client/document"
+	"github.com/RossMerr/couchdb_go/client/server"
+	"github.com/RossMerr/couchdb_go/models"
+	"github.com/go-openapi/strfmt"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
+
+const replicatorDB = "_replicator"
+
 
 func resourceDatabaseReplication() *schema.Resource {
 	return &schema.Resource{
@@ -15,21 +21,10 @@ func resourceDatabaseReplication() *schema.Resource {
 		DeleteContext: databaseReplicationDelete,
 		UpdateContext: databaseReplicationUpdate,
 		Schema: map[string]*schema.Schema{
-			"name": {
+			"revision": {
 				Type:        schema.TypeString,
-				Required:    true,
-				ForceNew:    true,
-				Description: "Name of the replication document",
-			},
-			"source": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "Source of the replication",
-			},
-			"target": {
-				Type:        schema.TypeString,
-				Required:    true,
-				Description: "Target of the replication",
+				Computed:    true,
+				Description: "Revision",
 			},
 			"create_target": {
 				Type:        schema.TypeBool,
@@ -43,24 +38,67 @@ func resourceDatabaseReplication() *schema.Resource {
 				Default:     false,
 				Description: "Keep the replication permanently running?",
 			},
-			"replication_id": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "Internal replication ID",
+			"source": {
+				Type:        schema.TypeList,
+				MaxItems:    1,
+				Optional:    true,
+				Description: "Source of the replication",
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"headers": {
+							Type:        schema.TypeList,
+							MaxItems:    1,
+							Optional:    true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"authorization": {
+										Type:     schema.TypeString,
+										Optional: true,
+										Default: "",
+									},
+								},
+							},
+						},
+						"url": {
+							Type:        schema.TypeString,
+							Required:    true,
+						},
+					},
+				},
 			},
-			"replication_state": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "currennt replication state",
-			},
-			"replication_state_reason": {
-				Type:        schema.TypeString,
-				Computed:    true,
-				Description: "current replication state transition reason",
+			"target": {
+				Type:        schema.TypeList,
+				MaxItems:    1,
+				Optional:    true,
+				Description: "Target of the replication",
+				Elem: &schema.Resource{
+					Schema: map[string]*schema.Schema{
+						"headers": {
+							Type:        schema.TypeList,
+							MaxItems:    1,
+							Optional:    true,
+							Elem: &schema.Resource{
+								Schema: map[string]*schema.Schema{
+									"authorization": {
+										Type:     schema.TypeString,
+										Optional: true,
+										Default: "",
+									},
+								},
+							},
+						},
+						"url": {
+							Type:        schema.TypeString,
+							Required:    true,
+						},
+					},
+				},
 			},
 		},
 	}
 }
+
+
 
 func databaseReplicationCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
 	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
@@ -68,18 +106,29 @@ func databaseReplicationCreate(ctx context.Context, d *schema.ResourceData, meta
 		return append(diags, *dd)
 	}
 
-	options := kivik.Options{
-		"id":            d.Get("name").(string),
-		"create_target": d.Get("create_target").(bool),
-		"continuous":    d.Get("continuous").(bool),
-		"filter":        d.Get("filter").(string),
+	replicate := &models.Replicate{
+		CreateTarget: d.Get("create_target").(bool),
+		Continuous: d.Get("continuous").(bool),
+		Filter:  d.Get("filter").(string),
+		Source: extractRequest(d.Get("source")),
+		Target:  extractRequest(d.Get("target")),
 	}
 
-	rep, err := client.Replicate(ctx, d.Get("target").(string), d.Get("source").(string), options)
+	params := server.NewReplicationParams().WithBody(replicate)
+	ok, accepted, err := client.Server.Replication(params)
 	if err != nil {
 		return diag.FromErr(err)
 	}
-	d.SetId(rep.ReplicationID())
+
+	if ok != nil && ok.Payload != nil && ok.Payload.Ok {
+		d.SetId(ok.Payload.ID)
+		d.Set("revision", ok.Payload.Rev)
+	}
+
+	if accepted != nil && accepted.Payload != nil && accepted.Payload.Ok {
+		d.SetId(accepted.Payload.ID)
+		d.Set("revision", accepted.Payload.Rev)
+	}
 
 	return databaseReplicationRead(ctx, d, meta)
 }
@@ -90,21 +139,21 @@ func databaseReplicationRead(ctx context.Context, d *schema.ResourceData, meta i
 		return append(diags, *dd)
 	}
 
-	reps, err := client.GetReplications(ctx)
+	rev := d.Get("revision").(string)
+	params := document.NewDocGetParams().WithDb(replicatorDB).WithDocid(d.Id()).WithRev(&rev)
+	reps, err := client.Document.DocGet(params)
 	if err != nil {
 		return diag.FromErr(err)
 	}
 
-	for _, rep := range reps {
-		if rep.ReplicationID() == d.Id() {
-			d.Set("source", rep.Source)
-			d.Set("target", rep.Target)
-			d.Set("replication_id", rep.ReplicationID)
-			d.Set("replication_state", rep.State())
-			d.Set("replication_state_reason", rep.Source)
-			break
-		}
-	}
+	raw, err := json.Marshal(reps.Payload)
+
+	var replicate models.Replicate
+	err = json.Unmarshal(raw, &replicate)
+
+	d.Set("continuous", replicate.Continuous)
+	d.Set("create_target", replicate.CreateTarget)
+	d.Set("revision", reps.ETag)
 
 	return diags
 }
@@ -114,22 +163,23 @@ func databaseReplicationDelete(ctx context.Context, d *schema.ResourceData, meta
 	if dd != nil {
 		return append(diags, *dd)
 	}
-
-	reps, err := client.GetReplications(ctx)
+	rev := d.Get("revision").(string)
+	params := document.NewDocDeleteParams().WithDb(replicatorDB).WithRev(&rev).WithDocid(d.Id())
+	ok, accepted, err := client.Document.DocDelete(params)
 	if err != nil {
-		return diag.FromErr(err)
-	}
-
-	for _, rep := range reps {
-		if rep.ReplicationID() == d.Id() {
-			err = rep.Delete(ctx)
-			if err != nil {
-				return diag.FromErr(err)
-			}
-		}
+		AppendDiagnostic(diags, err, "Unable to delete Document")
 	}
 
 	d.SetId("")
+
+	if ok != nil {
+		d.Set("revision", ok.ETag)
+	}
+
+	if accepted != nil {
+		d.Set("revision", accepted.ETag)
+	}
+
 	return diags
 }
 
@@ -139,4 +189,33 @@ func databaseReplicationUpdate(ctx context.Context, d *schema.ResourceData, meta
 		return err
 	}
 	return databaseReplicationCreate(ctx, d, meta)
+}
+
+
+func extractRequest(v interface{}) *models.Request {
+	vs := v.([]interface{})
+	if len(vs) != 1 {
+		return nil
+	}
+	vi := vs[0].(map[string]interface{})
+
+	request := &models.Request{
+		URL: strfmt.URI(vi["url"].(string)),
+		Headers: extractHeaders(vi["headers"]),
+	}
+
+	return request
+}
+
+func extractHeaders(v interface{}) *models.RequestHeaders {
+	vs := v.([]interface{})
+	if len(vs) != 1 {
+		return nil
+	}
+	vi := vs[0].(map[string]interface{})
+	headers := &models.RequestHeaders{
+		Authorization: vi["authorization"].(string),
+	}
+
+	return headers
 }
