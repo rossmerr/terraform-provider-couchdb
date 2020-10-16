@@ -92,7 +92,7 @@ func connectToCouchDB(ctx context.Context, conf *CouchDBConfiguration) (*apiclie
 	// when Terraform thinks it's available and when it is actually available.
 	// This is particularly acute when provisioning a server and then immediately
 	// trying to provision a database on it.
-	retryError := resource.RetryContext(ctx, 5*time.Minute, func() *resource.RetryError {
+	retryError := resource.RetryContext(ctx, time.Minute, func() *resource.RetryError {
 		transport := httptransport.New(conf.Endpoint, "", []string{conf.Scheme})
 		transport.DefaultAuthentication = httptransport.BasicAuth(conf.Username, conf.Password)
 		client = apiclient.New(transport, strfmt.Default)

@@ -7,6 +7,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"strings"
 )
 
 func resourceDocument() *schema.Resource {
@@ -78,11 +79,11 @@ func documentUpdate(ctx context.Context, d *schema.ResourceData, meta interface{
 	}
 
 	if created != nil {
-		d.Set("revision", created.ETag)
+		d.Set("revision", strings.Trim(created.ETag, "\""))
 	}
 
 	if accepted != nil {
-		d.Set("revision", accepted.ETag)
+		d.Set("revision", strings.Trim(accepted.ETag, "\""))
 	}
 
 	return documentRead(ctx, d, meta)
@@ -106,11 +107,11 @@ func documentDelete(ctx context.Context, d *schema.ResourceData, meta interface{
 	d.SetId("")
 
 	if ok != nil {
-		d.Set("revision", ok.ETag)
+		d.Set("revision", strings.Trim(ok.ETag, "\""))
 	}
 
 	if accepted != nil {
-		d.Set("revision", accepted.ETag)
+		d.Set("revision", strings.Trim(accepted.ETag, "\""))
 	}
 
 	return diags
@@ -132,7 +133,7 @@ func documentRead(ctx context.Context, d *schema.ResourceData, meta interface{})
 
 	doc := ok.Payload.(map[string]interface{})
 
-	d.Set("revision", ok.ETag)
+	d.Set("revision", strings.Trim(ok.ETag, "\""))
 
 	raw, err := json.Marshal(doc)
 
@@ -177,11 +178,11 @@ func documentCreate(ctx context.Context, d *schema.ResourceData, meta interface{
 	d.SetId(docId)
 
 	if created != nil && created.Payload.Ok {
-		d.Set("revision", created.Payload.Rev)
+		d.Set("revision", strings.Trim(created.ETag, "\""))
 	}
 
 	if accepted != nil && accepted.Payload.Ok {
-		d.Set("revision", accepted.Payload.Rev)
+		d.Set("revision", strings.Trim(accepted.ETag, "\""))
 	}
 
 	return documentRead(ctx, d, meta)

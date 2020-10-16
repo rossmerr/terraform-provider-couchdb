@@ -42,6 +42,10 @@ github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 h1:d+Bc7a5rLufV
 github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
 github.com/RossMerr/couchdb_go v0.0.0-20201014214958-0dd0440286af h1:V0ipikdfTaPyhnWM6i9hXFo3YC3NcCnVovk2m+LhKn4=
 github.com/RossMerr/couchdb_go v0.0.0-20201014214958-0dd0440286af/go.mod h1:uhf7AGmfDL2MLo3wI5JfibMK+cLa7xPO2iZqnNAXHZE=
+github.com/RossMerr/couchdb_go v0.0.0-20201016085008-64e4fb32ff2a h1:kECBDATMXlqlATI6HoqT1zXi2MoklZIxsfLRzOxCSEU=
+github.com/RossMerr/couchdb_go v0.0.0-20201016085008-64e4fb32ff2a/go.mod h1:uhf7AGmfDL2MLo3wI5JfibMK+cLa7xPO2iZqnNAXHZE=
+github.com/RossMerr/couchdb_go v0.0.0-20201016102704-48ef65ab8fa3 h1:qOvZ49xdMML3JK3bO86fDre5ArBZwDbNHNTu8CCrY80=
+github.com/RossMerr/couchdb_go v0.0.0-20201016102704-48ef65ab8fa3/go.mod h1:uhf7AGmfDL2MLo3wI5JfibMK+cLa7xPO2iZqnNAXHZE=
 github.com/agext/levenshtein v1.2.1/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
 github.com/agext/levenshtein v1.2.2 h1:0S/Yg6LYmFJ5stwQeRp6EeOcCbj7xiqQSdNelsXvaqE=
 github.com/agext/levenshtein v1.2.2/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=

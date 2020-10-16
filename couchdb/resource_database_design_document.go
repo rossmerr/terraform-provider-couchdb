@@ -8,6 +8,7 @@ import (
 	"github.com/RossMerr/couchdb_go/models"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"strings"
 )
 
 func resourceDesignDocument() *schema.Resource {
@@ -63,7 +64,7 @@ func designDocumentCreate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	dbName := d.Get("database").(string)
 
-	docId := fmt.Sprintf("_design/%s", d.Get("name").(string))
+	docId := fmt.Sprintf("%s", d.Get("name").(string))
 
 	viewsDoc := map[string]interface{}{}
 	if interfaceViews, ok := d.GetOk("views"); ok {
@@ -86,12 +87,19 @@ func designDocumentCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 
 	params := design_documents.NewDesignDocPutParams().WithDb(dbName).WithBody(designDoc).WithDdoc(docId)
-	ok, err := client.DesignDocuments.DesignDocPut(params)
+	created, accepted, err := client.DesignDocuments.DesignDocPut(params)
 	if err != nil {
+		diags = AppendDiagnostic(diags, fmt.Errorf("designDoc"), fmt.Sprintf("%+v", designDoc))
 		return AppendDiagnostic(diags, fmt.Errorf("%s \nDesign Doc:- \n%s", err.Error(), d.Get("view").(string)), "Unable to create design doc")
 	}
 
-	d.Set("revision", ok.ETag)
+	if created != nil {
+		d.Set("revision", strings.Trim(created.ETag, "\""))
+	}
+
+	if accepted != nil {
+		d.Set("revision", strings.Trim(accepted.ETag, "\""))
+	}
 
 	d.SetId(docId)
 
@@ -104,7 +112,7 @@ func designDocumentRead(ctx context.Context, d *schema.ResourceData, meta interf
 		return append(diags, *dd)
 	}
 	dbName := d.Get("database").(string)
-	docId := fmt.Sprintf("_design/%s", d.Get("name").(string))
+	docId := fmt.Sprintf("%s", d.Get("name").(string))
 	rev := d.Get("revision").(string)
 
 	params := design_documents.NewDesignDocGetParams().WithDb(dbName).WithDdoc(docId).WithRev(&rev)
@@ -114,19 +122,22 @@ func designDocumentRead(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 
 	if ok.Payload != nil {
-		designDoc := ok.Payload.(map[string]interface{})
-		d.Set("language", designDoc["language"].(string))
+		d.Set("language",  ok.Payload.Language)
 
-		if views, ok := designDoc["views"]; ok {
-			d.Set("views", views.(string))
+		if ok.Payload.Views != nil {
+			if data, err := json.Marshal(ok.Payload.Views); err == nil {
+				d.Set("views", string(data))
+			}
 		}
 
-		if views, ok := designDoc["indexes"]; ok {
-			d.Set("indexes", views.(string))
+		if ok.Payload.Indexes != nil {
+			if data, err := json.Marshal(ok.Payload.Indexes); err == nil {
+				d.Set("indexes", string(data))
+			}
 		}
 	}
 
-	d.Set("revision", ok.ETag)
+	d.Set("revision", strings.Trim(ok.ETag, "\""))
 	return diags
 }
 
@@ -160,14 +171,19 @@ func designDocumentUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 
 	params := design_documents.NewDesignDocPutParams().WithDb(dbName).WithBody(designDoc).WithDdoc(d.Id())
-	ok, err := client.DesignDocuments.DesignDocPut(params)
+	created, accepted, err := client.DesignDocuments.DesignDocPut(params)
 
 	if err != nil {
 		return AppendDiagnostic(diags, fmt.Errorf("%s \nDesign Doc:- \n%s", err.Error(), d.Get("view").(string)), "Unable to update design doc")
 	}
 
+	if created != nil {
+		d.Set("revision", strings.Trim(created.ETag, "\""))
+	}
 
-	d.Set("revision", ok.ETag)
+	if accepted != nil {
+		d.Set("revision", strings.Trim(accepted.ETag, "\""))
+	}
 
 	return diags
 }
@@ -179,8 +195,9 @@ func designDocumentDelete(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 
 	dbName := d.Get("database").(string)
+	rev := d.Get("revision").(string)
 
-	params := design_documents.NewDesignDocDeleteParams().WithDb(dbName).WithDdoc(d.Id())
+	params := design_documents.NewDesignDocDeleteParams().WithDb(dbName).WithDdoc(d.Id()).WithRev(&rev)
 	ok, accepted, err := client.DesignDocuments.DesignDocDelete(params)
 	if err != nil {
 		return AppendDiagnostic(diags, fmt.Errorf("docID: %s \nrev: %s \n%s", d.Id(), d.Get("revision").(string), err.Error()), "Unable to delete design doc")
@@ -188,11 +205,11 @@ func designDocumentDelete(ctx context.Context, d *schema.ResourceData, meta inte
 
 	d.SetId("")
 	if ok != nil {
-		d.Set("revision", ok.ETag)
+		d.Set("revision", strings.Trim(ok.ETag, "\""))
 	}
 
 	if accepted != nil {
-		d.Set("revision", accepted.ETag)
+		d.Set("revision", strings.Trim(accepted.ETag, "\""))
 	}
 
 	return diags

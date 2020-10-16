@@ -12,7 +12,7 @@ terraform {
 
 locals {
   couchdb = {
-    endpoint = "http://localhost"
+    endpoint = "localhost"
     port = 8901
     username = "admin"
     password = "password"
@@ -59,12 +59,11 @@ resource "couchdb_database" "db1" {
 
 resource "couchdb_database_design_document" "test" {
   database = couchdb_database.db1.name
-  name = "types"
+  name = "test"
   views = <<EOF
   {
     "people" : {
-        "map" : "function(doc) { if (doc.type == 'person') { emit(doc); } }",
-        "reduce": ""
+        "map": "function(doc) { emit(doc._id, doc); }"
     }
   }
 EOF

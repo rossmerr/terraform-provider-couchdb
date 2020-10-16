@@ -5,8 +5,8 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/RossMerr/couchdb_go/client/document"
+	"strings"
 
-	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 )
@@ -55,30 +55,31 @@ func userCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) (
 		return append(diags, *dd)
 	}
 
-
+	docID :=  userPrefix + d.Get("name").(string)
 	user := &tuser{
-		ID:       userPrefix + uuid.New().String(),
+		ID:       docID,
 		Name:     d.Get("name").(string),
 		Type:     "user",
 		Roles:    stringsFromSet(d.Get("roles")),
 		Password: d.Get("password").(string),
 	}
 
-	params := document.NewPostParams().WithDb(usersDB).WithBody(user)
-	created, accepted, err := client.Document.Post(params)
+	params := document.NewDocPutParams().WithDb(usersDB).WithBody(user).WithDocid(docID)
+	created, accepted, err := client.Document.DocPut(params)
+
 	if err != nil {
 		return AppendDiagnostic(diags, err, "Unable to create to Document")
 	}
 
 	if created != nil && created.Payload.Ok {
-		d.Set("revision", created.Payload.Rev)
+		d.Set("revision", strings.Trim(created.ETag, "\""))
 	}
 
 	if accepted != nil && accepted.Payload.Ok {
-		d.Set("revision", accepted.Payload.Rev)
+		d.Set("revision", strings.Trim(accepted.ETag, "\""))
 	}
 
-	d.SetId(user.ID)
+	d.SetId(docID)
 	return userRead(ctx, d, meta)
 }
 
@@ -97,8 +98,6 @@ func userRead(ctx context.Context, d *schema.ResourceData, meta interface{}) (di
 
 	doc := ok.Payload.(map[string]interface{})
 
-	d.Set("revision", ok.ETag)
-
 	raw, err := json.Marshal(doc)
 
 	var user tuser
@@ -107,7 +106,7 @@ func userRead(ctx context.Context, d *schema.ResourceData, meta interface{}) (di
 		return AppendDiagnostic(diags, err, "Unable to read User")
 	}
 
-	d.Set("revision", ok.ETag)
+	d.Set("revision", strings.Trim(ok.ETag, "\""))
 	d.Set("roles", user.Roles)
 
 	return diags
@@ -136,11 +135,13 @@ func userUpdate(ctx context.Context, d *schema.ResourceData, meta interface{}) (
 	}
 
 	if created != nil {
-		d.Set("revision", created.ETag)
+		d.Set("revision", strings.Trim(created.ETag, "\""))
+
 	}
 
 	if accepted != nil {
-		d.Set("revision", accepted.ETag)
+		d.Set("revision", strings.Trim(accepted.ETag, "\""))
+
 	}
 
 	return userRead(ctx, d, meta)
@@ -163,11 +164,12 @@ func userDelete(ctx context.Context, d *schema.ResourceData, meta interface{}) (
 	d.SetId("")
 
 	if ok != nil {
-		d.Set("revision", ok.ETag)
+		d.Set("revision", strings.Trim(ok.ETag, "\""))
 	}
 
 	if accepted != nil {
-		d.Set("revision", accepted.ETag)
+
+		d.Set("revision", strings.Trim(accepted.ETag, "\""))
 	}
 
 	return diags

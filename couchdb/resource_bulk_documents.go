@@ -259,7 +259,11 @@ func bulkDocumentsCreate(ctx context.Context, d *schema.ResourceData, meta inter
 
 	revisions := map[string]string{}
 	for _, item := range created.Payload {
-		revisions[item.ID] = item.Rev
+		if item.Ok {
+			revisions[item.ID] = item.Rev
+		} else {
+
+		}
 	}
 
 	byt, err := json.Marshal(revisions)
