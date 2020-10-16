@@ -214,11 +214,3 @@ func designDocumentDelete(ctx context.Context, d *schema.ResourceData, meta inte
 
 	return diags
 }
-
-type tdesignDoc struct {
-	ID       string            `json:"_id"`
-	Rev      string            `json:"_rev,omitempty"`
-	Views    map[string]interface{}  `json:"views"`
-	Indexes  map[string]interface{} `json:"indexes"`
-	Language string            `json:"language"`
-}
