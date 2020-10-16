@@ -48,7 +48,7 @@ terraform {
 
 ```
 provider "couchdb" {
-    endpoint = "http://localhost:5984"
+    endpoint = "localhost:5984"
     name = "jenny"
     password = "secret" 
 }
