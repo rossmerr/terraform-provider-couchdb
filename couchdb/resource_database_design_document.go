@@ -46,11 +46,42 @@ func resourceDesignDocument() *schema.Resource {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Description: "The views inside the design document (wrap in <<EOF { } EOF)",
+				//DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
+				//	return false
+				//},
+				StateFunc: func(i interface{}) string {
+					viewsDoc := map[string]interface{}{}
+					if err := json.Unmarshal([]byte(i.(string)), &viewsDoc); err != nil {
+						return ""
+					}
+					b, err := json.Marshal(viewsDoc)
+					if err != nil {
+						return ""
+					}
+					return string(b)
+				},
+				DefaultFunc : func() (interface{}, error) {
+					return "{}", nil
+				},
 			},
 			"indexes": {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Description: "The indexes inside the design document (wrap in <<EOF { } EOF)",
+				StateFunc: func(i interface{}) string {
+					viewsDoc := map[string]interface{}{}
+					if err := json.Unmarshal([]byte(i.(string)), &viewsDoc); err != nil {
+						return ""
+					}
+					b, err := json.Marshal(viewsDoc)
+					if err != nil {
+						return ""
+					}
+					return string(b)
+				},
+				DefaultFunc : func() (interface{}, error) {
+					return "{}", nil
+				},
 			},
 		},
 	}
@@ -81,9 +112,9 @@ func designDocumentCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	}
 
 	designDoc := &models.DesignDoc{
-		Language:  d.Get("language").(string),
-		Views: viewsDoc,
-		Indexes: indexesDoc,
+		Language: d.Get("language").(string),
+		Views:    viewsDoc,
+		Indexes:  indexesDoc,
 	}
 
 	params := design_documents.NewDesignDocPutParams().WithDb(dbName).WithBody(designDoc).WithDdoc(docId)
@@ -122,17 +153,21 @@ func designDocumentRead(ctx context.Context, d *schema.ResourceData, meta interf
 	}
 
 	if ok.Payload != nil {
-		d.Set("language",  ok.Payload.Language)
+		d.Set("language", ok.Payload.Language)
 
 		if ok.Payload.Views != nil {
 			if data, err := json.Marshal(ok.Payload.Views); err == nil {
 				d.Set("views", string(data))
+			} else {
+				d.Set("views", nil)
 			}
 		}
 
 		if ok.Payload.Indexes != nil {
 			if data, err := json.Marshal(ok.Payload.Indexes); err == nil {
 				d.Set("indexes", string(data))
+			} else {
+				d.Set("indexes", nil)
 			}
 		}
 	}
@@ -163,11 +198,10 @@ func designDocumentUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 		}
 	}
 
-
 	designDoc := &models.DesignDoc{
-		Language:  d.Get("language").(string),
-		Views: viewsDoc,
-		Indexes: indexesDoc,
+		Language: d.Get("language").(string),
+		Views:    viewsDoc,
+		Indexes:  indexesDoc,
 	}
 
 	params := design_documents.NewDesignDocPutParams().WithDb(dbName).WithBody(designDoc).WithDdoc(d.Id())
