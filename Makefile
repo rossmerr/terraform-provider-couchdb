@@ -1,6 +1,6 @@
 TEST?=$$(go list ./... | grep -v 'vendor')
 HOSTNAME=github.com
-NAMESPACE=RossMerr
+NAMESPACE=rossmerr
 NAME=couchdb
 BINARY=terraform-provider-${NAME}
 VERSION=0.1.1
