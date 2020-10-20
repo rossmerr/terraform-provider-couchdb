@@ -1,9 +1,9 @@
-module github.com/RossMerr/terraform-provider-couchdb
+module github.com/rossmerr/terraform-provider-couchdb
 
 go 1.14
 
 require (
-	github.com/RossMerr/couchdb_go v0.0.0-20201016102704-48ef65ab8fa3
+	github.com/rossmerr/couchdb_go v0.0.0-20201016102704-48ef65ab8fa3
 	github.com/go-openapi/runtime v0.19.22
 	github.com/go-openapi/strfmt v0.19.5
 	github.com/google/uuid v1.1.2
