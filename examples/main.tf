@@ -5,7 +5,7 @@ terraform {
       version = "2.7.2"
     }
     couchdb = {
-      source = "github.com/RossMerr/couchdb"
+      source = "github.com/rossmerr/couchdb"
     }
   }
 }

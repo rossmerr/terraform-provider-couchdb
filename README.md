@@ -14,17 +14,17 @@ Requirements
 
 ## Building The Provider
 
-Clone repository to: `$GOPATH/src/github.com/RossMerr/terraform-provider-couchdb`
+Clone repository to: `$GOPATH/src/github.com/rossmerr/terraform-provider-couchdb`
 
 ```sh
-$ mkdir -p $GOPATH/src/github.com/RossMerr; cd $GOPATH/src/github.com/RossMerr
-$ git clone git@github.com/RossMerr/terraform-provider-couchdb
+$ mkdir -p $GOPATH/src/github.com/rossmerr; cd $GOPATH/src/github.com/rossmerr
+$ git clone git@github.com/rossmerr/terraform-provider-couchdb
 ```
 
 Enter the provider directory and build the provider
 
 ```sh
-$ cd $GOPATH/src/github.com/RossMerr/terraform-provider-couchdb
+$ cd $GOPATH/src/github.com/rossmerr/terraform-provider-couchdb
 $ go install
 ```
 ## Using the provider
@@ -38,7 +38,7 @@ Or run the `make install` and you can reference the provider locally using
 terraform {
   required_providers {
     couchdb = {
-      source = "github.com/RossMerr/couchdb"
+      source = "github.com/rossmerr/couchdb"
     }
   }
 }
