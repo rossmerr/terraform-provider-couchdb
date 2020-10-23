@@ -46,9 +46,6 @@ func resourceDesignDocument() *schema.Resource {
 				Type:        schema.TypeString,
 				Optional:    true,
 				Description: "The views inside the design document (wrap in <<EOF { } EOF)",
-				//DiffSuppressFunc: func(k, old, new string, d *schema.ResourceData) bool {
-				//	return false
-				//},
 				StateFunc: func(i interface{}) string {
 					viewsDoc := map[string]interface{}{}
 					if err := json.Unmarshal([]byte(i.(string)), &viewsDoc); err != nil {
