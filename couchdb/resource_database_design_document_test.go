@@ -3,8 +3,9 @@ package couchdb
 import (
 	"context"
 	"fmt"
-	"github.com/RossMerr/couchdb_go/client/design_documents"
 	"testing"
+
+	"github.com/rossmerr/couchdb_go/client/design_documents"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
@@ -80,6 +81,7 @@ func testAccCouchDBDesignDocumentDestroy(s *terraform.State) error {
 
 	return nil
 }
+
 var testAccCouchDBDesignDocument = `
 resource "couchdb_database" "test" {
 	name = "test"

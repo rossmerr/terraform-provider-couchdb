@@ -3,23 +3,24 @@ package couchdb
 import (
 	"context"
 	"fmt"
-	"github.com/RossMerr/couchdb_go/client/server"
-	"github.com/go-openapi/strfmt"
 	"time"
 
-	apiclient "github.com/RossMerr/couchdb_go/client"
+	"github.com/go-openapi/strfmt"
+	"github.com/rossmerr/couchdb_go/client/server"
+
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/hashicorp/go-cty/cty"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	apiclient "github.com/rossmerr/couchdb_go/client"
 )
 
 type CouchDBConfiguration struct {
-	Endpoint        string
-	Scheme          string
-	Username        string
-	Password        string
+	Endpoint string
+	Scheme   string
+	Username string
+	Password string
 }
 
 func Provider() *schema.Provider {

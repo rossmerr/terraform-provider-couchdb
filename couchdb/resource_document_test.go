@@ -3,10 +3,11 @@ package couchdb
 import (
 	"context"
 	"fmt"
-	"github.com/RossMerr/couchdb_go/client/document"
+	"testing"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"testing"
+	"github.com/rossmerr/couchdb_go/client/document"
 )
 
 func TestAccCouchDBDocument(t *testing.T) {
@@ -41,7 +42,6 @@ func testAccCouchDBDocumentExists(n string) resource.TestCheckFunc {
 		if dd != nil {
 			return fmt.Errorf(dd.Detail)
 		}
-
 
 		params := document.NewDocInfoParams().WithDb(rs.Primary.Attributes["database"]).WithDocid(rs.Primary.ID)
 		_, err := client.Document.DocInfo(params)

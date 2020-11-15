@@ -3,9 +3,10 @@ package couchdb
 import (
 	"context"
 	"fmt"
-	"github.com/RossMerr/couchdb_go/client/database"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/rossmerr/couchdb_go/client/database"
 )
 
 func resourceDatabase() *schema.Resource {
@@ -141,7 +142,7 @@ func deleteDatabase(ctx context.Context, d *schema.ResourceData, meta interface{
 	dbName := d.Id()
 
 	params := database.NewDeleteParams().WithDb(dbName)
-	_ ,_, err := client.Database.Delete(params)
+	_, _, err := client.Database.Delete(params)
 	if err == nil {
 		d.SetId("")
 		return diags
@@ -160,4 +161,3 @@ func extractClusterOptions(v interface{}) (*int32, *int32) {
 	shards := int32(vi["shards"].(int))
 	return &shards, &replicas
 }
-

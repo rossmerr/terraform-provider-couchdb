@@ -4,8 +4,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/RossMerr/couchdb_go/client/document"
 	"strings"
+
+	"github.com/rossmerr/couchdb_go/client/document"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
@@ -55,7 +56,7 @@ func userCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) (
 		return append(diags, *dd)
 	}
 
-	docID :=  userPrefix + d.Get("name").(string)
+	docID := userPrefix + d.Get("name").(string)
 	user := &tuser{
 		ID:       docID,
 		Name:     d.Get("name").(string),
@@ -88,7 +89,6 @@ func userRead(ctx context.Context, d *schema.ResourceData, meta interface{}) (di
 	if dd != nil {
 		return append(diags, *dd)
 	}
-
 
 	params := document.NewDocGetParams().WithDb(usersDB).WithDocid(d.Id())
 	ok, err := client.Document.DocGet(params)

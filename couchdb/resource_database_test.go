@@ -3,8 +3,9 @@ package couchdb
 import (
 	"context"
 	"fmt"
-	"github.com/RossMerr/couchdb_go/client/database"
 	"testing"
+
+	"github.com/rossmerr/couchdb_go/client/database"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
@@ -63,7 +64,6 @@ func testAccCouchDBDatabaseExists(n string) resource.TestCheckFunc {
 		return nil
 	}
 }
-
 
 func testAccCouchDBDatabaseDestroy(s *terraform.State) error {
 	client, dd := connectToCouchDB(context.Background(), testAccProvider.Meta().(*CouchDBConfiguration))

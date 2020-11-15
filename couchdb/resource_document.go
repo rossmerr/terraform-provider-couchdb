@@ -3,11 +3,12 @@ package couchdb
 import (
 	"context"
 	"encoding/json"
-	"github.com/RossMerr/couchdb_go/client/document"
+	"strings"
+
 	"github.com/google/uuid"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"strings"
+	"github.com/rossmerr/couchdb_go/client/document"
 )
 
 func resourceDocument() *schema.Resource {

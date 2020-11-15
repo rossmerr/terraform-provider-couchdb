@@ -3,8 +3,9 @@ package couchdb
 import (
 	"context"
 	"fmt"
-	"github.com/RossMerr/couchdb_go/client/document"
 	"testing"
+
+	"github.com/rossmerr/couchdb_go/client/document"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
@@ -46,7 +47,7 @@ func testAccCouchDBUserExists(n string) resource.TestCheckFunc {
 		params := document.NewDocInfoParams().WithDb(usersDB).WithDocid(rs.Primary.ID)
 		_, err := client.Document.DocInfo(params)
 
-		if  err != nil {
+		if err != nil {
 			return err
 		}
 

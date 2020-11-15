@@ -3,16 +3,16 @@ package couchdb
 import (
 	"context"
 	"encoding/json"
-	"github.com/RossMerr/couchdb_go/client/document"
-	"github.com/RossMerr/couchdb_go/client/server"
-	"github.com/RossMerr/couchdb_go/models"
+
 	"github.com/go-openapi/strfmt"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/rossmerr/couchdb_go/client/document"
+	"github.com/rossmerr/couchdb_go/client/server"
+	"github.com/rossmerr/couchdb_go/models"
 )
 
 const replicatorDB = "_replicator"
-
 
 func resourceDatabaseReplication() *schema.Resource {
 	return &schema.Resource{
@@ -46,22 +46,22 @@ func resourceDatabaseReplication() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"headers": {
-							Type:        schema.TypeList,
-							MaxItems:    1,
-							Optional:    true,
+							Type:     schema.TypeList,
+							MaxItems: 1,
+							Optional: true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"authorization": {
 										Type:     schema.TypeString,
 										Optional: true,
-										Default: "",
+										Default:  "",
 									},
 								},
 							},
 						},
 						"url": {
-							Type:        schema.TypeString,
-							Required:    true,
+							Type:     schema.TypeString,
+							Required: true,
 						},
 					},
 				},
@@ -74,22 +74,22 @@ func resourceDatabaseReplication() *schema.Resource {
 				Elem: &schema.Resource{
 					Schema: map[string]*schema.Schema{
 						"headers": {
-							Type:        schema.TypeList,
-							MaxItems:    1,
-							Optional:    true,
+							Type:     schema.TypeList,
+							MaxItems: 1,
+							Optional: true,
 							Elem: &schema.Resource{
 								Schema: map[string]*schema.Schema{
 									"authorization": {
 										Type:     schema.TypeString,
 										Optional: true,
-										Default: "",
+										Default:  "",
 									},
 								},
 							},
 						},
 						"url": {
-							Type:        schema.TypeString,
-							Required:    true,
+							Type:     schema.TypeString,
+							Required: true,
 						},
 					},
 				},
@@ -97,8 +97,6 @@ func resourceDatabaseReplication() *schema.Resource {
 		},
 	}
 }
-
-
 
 func databaseReplicationCreate(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
 	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
@@ -108,10 +106,10 @@ func databaseReplicationCreate(ctx context.Context, d *schema.ResourceData, meta
 
 	replicate := &models.Replicate{
 		CreateTarget: d.Get("create_target").(bool),
-		Continuous: d.Get("continuous").(bool),
-		Filter:  d.Get("filter").(string),
-		Source: extractRequest(d.Get("source")),
-		Target:  extractRequest(d.Get("target")),
+		Continuous:   d.Get("continuous").(bool),
+		Filter:       d.Get("filter").(string),
+		Source:       extractRequest(d.Get("source")),
+		Target:       extractRequest(d.Get("target")),
 	}
 
 	params := server.NewReplicationParams().WithBody(replicate)
@@ -191,7 +189,6 @@ func databaseReplicationUpdate(ctx context.Context, d *schema.ResourceData, meta
 	return databaseReplicationCreate(ctx, d, meta)
 }
 
-
 func extractRequest(v interface{}) *models.Request {
 	vs := v.([]interface{})
 	if len(vs) != 1 {
@@ -200,7 +197,7 @@ func extractRequest(v interface{}) *models.Request {
 	vi := vs[0].(map[string]interface{})
 
 	request := &models.Request{
-		URL: strfmt.URI(vi["url"].(string)),
+		URL:     strfmt.URI(vi["url"].(string)),
 		Headers: extractHeaders(vi["headers"]),
 	}
 
