@@ -39,14 +39,14 @@ jobs:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         tag_name: ${{ github.ref }}
-        draft: true
+        draft: false
         prerelease: false      
     - name: Upload binaries to release
       uses: svenstaro/upload-release-action@v2
       with:
         repo_token: ${{ secrets.GITHUB_TOKEN }}
         file: bin/terraform-provider-couchdb_0.1.1_linux_arm
-        asset_name: mything
+        asset_name: terraform-provider-couchdb_0.1.1_linux_arm
         tag: ${{ github.ref }}
         overwrite: true
         body: "Linux ARM"    
