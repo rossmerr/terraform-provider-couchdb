@@ -42,23 +42,32 @@ jobs:
         draft: false
         prerelease: false      
       
-    - name: Upload Release Asset
-      id: upload-release-asset 
+    - name: Upload Release Linux ARM
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }}
+        asset_path: bin/terraform-provider-couchdb_0.1.1_linux_arm
+        asset_name: terraform-provider-couchdb_0.1.1_linux_arm
+        asset_content_type: application/zip    
+
+    - name: Upload Release Linux AMD64
+      uses: actions/upload-release-asset@v1
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      with:
+        upload_url: ${{ steps.create_release.outputs.upload_url }} 
+        asset_path: bin/terraform-provider-couchdb_0.1.1_linux_amd64
+        asset_name: terraform-provider-couchdb_0.1.1_linux_amd64
+        asset_content_type: application/zip    
+
+    - name: Upload Release Windows AMD64
       uses: actions/upload-release-asset@v1
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       with:
         upload_url: ${{ steps.create_release.outputs.upload_url }} # This pulls from the CREATE RELEASE step above, referencing it's ID to get its outputs object, which include a `upload_url`. See this blog post for more info: https://jasonet.co/posts/new-features-of-github-actions/#passing-data-to-future-steps 
-        asset_path: bin/terraform-provider-couchdb_0.1.1_linux_arm
-        asset_name: terraform-provider-couchdb_0.1.1_linux_arm
+        asset_path: bin/terraform-provider-couchdb_0.1.1_windows_amd64
+        asset_name: terraform-provider-couchdb_0.1.1_windows_amd64
         asset_content_type: application/zip    
-
-    # - name: Upload binaries to release
-    #   uses: svenstaro/upload-release-action@v2
-    #   with:
-    #     repo_token: ${{ secrets.GITHUB_TOKEN }}
-    #     file: bin/terraform-provider-couchdb_0.1.1_linux_arm
-    #     asset_name: terraform-provider-couchdb_0.1.1_linux_arm
-    #     tag: ${{ github.ref }}
-    #     overwrite: true
-    #     body: "Linux ARM"            
