@@ -2,8 +2,8 @@ package couchdb
 
 import (
 	"context"
-	apiclient "github.com/RossMerr/couchdb_go/client"
-	"github.com/RossMerr/couchdb_go/client/server"
+	apiclient "github.com/rossmerr/couchdb_go/client"
+	"github.com/rossmerr/couchdb_go/client/server"
 	httptransport "github.com/go-openapi/runtime/client"
 	"github.com/go-openapi/strfmt"
 	"os"

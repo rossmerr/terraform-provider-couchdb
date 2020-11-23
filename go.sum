@@ -40,12 +40,6 @@ github.com/PuerkitoBio/purell v1.1.1 h1:WEQqlqaGbrPkxLJWfBwQmfEAE1Z7ONdDLqrN38tN
 github.com/PuerkitoBio/purell v1.1.1/go.mod h1:c11w/QuzBsJSee3cPx9rAFu61PvFxuPbtSwDGJws/X0=
 github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 h1:d+Bc7a5rLufV/sSk/8dngufqelfh6jnri85riMAaF/M=
 github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578/go.mod h1:uGdkoq3SwY9Y+13GIhn11/XLaGBb4BfwItxLd5jeuXE=
-github.com/RossMerr/couchdb_go v0.0.0-20201014214958-0dd0440286af h1:V0ipikdfTaPyhnWM6i9hXFo3YC3NcCnVovk2m+LhKn4=
-github.com/RossMerr/couchdb_go v0.0.0-20201014214958-0dd0440286af/go.mod h1:uhf7AGmfDL2MLo3wI5JfibMK+cLa7xPO2iZqnNAXHZE=
-github.com/RossMerr/couchdb_go v0.0.0-20201016085008-64e4fb32ff2a h1:kECBDATMXlqlATI6HoqT1zXi2MoklZIxsfLRzOxCSEU=
-github.com/RossMerr/couchdb_go v0.0.0-20201016085008-64e4fb32ff2a/go.mod h1:uhf7AGmfDL2MLo3wI5JfibMK+cLa7xPO2iZqnNAXHZE=
-github.com/RossMerr/couchdb_go v0.0.0-20201016102704-48ef65ab8fa3 h1:qOvZ49xdMML3JK3bO86fDre5ArBZwDbNHNTu8CCrY80=
-github.com/RossMerr/couchdb_go v0.0.0-20201016102704-48ef65ab8fa3/go.mod h1:uhf7AGmfDL2MLo3wI5JfibMK+cLa7xPO2iZqnNAXHZE=
 github.com/agext/levenshtein v1.2.1/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
 github.com/agext/levenshtein v1.2.2 h1:0S/Yg6LYmFJ5stwQeRp6EeOcCbj7xiqQSdNelsXvaqE=
 github.com/agext/levenshtein v1.2.2/go.mod h1:JEDfjyjHDjOF/1e4FlBE/PkbqA9OfWu2ki2W0IB5558=
@@ -389,6 +383,8 @@ github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:
 github.com/rogpeppe/go-internal v1.1.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rogpeppe/go-internal v1.2.2/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
+github.com/rossmerr/couchdb_go v0.0.0-20201123121117-6342424da447 h1:UaXYNbfTFqHCH6zS6F3OSue4BegUAuNWeePLsWrxWN8=
+github.com/rossmerr/couchdb_go v0.0.0-20201123121117-6342424da447/go.mod h1:f4u2APtsa8YsNgmtyT9/2lsuQwgruxdXND53PW+iEpQ=
 github.com/sergi/go-diff v1.0.0/go.mod h1:0CfEIISq7TuYL3j771MWULgwwjU+GofnZX9QAmXWZgo=
 github.com/sirupsen/logrus v1.4.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
 github.com/sirupsen/logrus v1.4.1/go.mod h1:ni0Sbl8bgC9z8RoU9G6nDWqqs/fq4eDPysMBDgk/93Q=

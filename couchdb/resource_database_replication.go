@@ -3,9 +3,9 @@ package couchdb
 import (
 	"context"
 	"encoding/json"
-	"github.com/RossMerr/couchdb_go/client/document"
-	"github.com/RossMerr/couchdb_go/client/server"
-	"github.com/RossMerr/couchdb_go/models"
+	"github.com/rossmerr/couchdb_go/client/document"
+	"github.com/rossmerr/couchdb_go/client/server"
+	"github.com/rossmerr/couchdb_go/models"
 	"github.com/go-openapi/strfmt"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"

@@ -3,7 +3,7 @@ package couchdb
 import (
 	"context"
 	"fmt"
-	"github.com/RossMerr/couchdb_go/client/design_documents"
+	"github.com/rossmerr/couchdb_go/client/design_documents"
 	"testing"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"

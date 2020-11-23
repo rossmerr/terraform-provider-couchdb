@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/RossMerr/couchdb_go/client/document"
+	"github.com/rossmerr/couchdb_go/client/document"
 	"strings"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
