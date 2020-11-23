@@ -204,7 +204,7 @@ github.com/mitchellh/mapstructure
 github.com/mitchellh/reflectwalk
 # github.com/oklog/run v1.0.0
 github.com/oklog/run
-# github.com/rossmerr/couchdb_go v0.0.0-20201115223220-2921e8ec9843
+# github.com/rossmerr/couchdb_go v0.0.0-20201123121117-6342424da447
 ## explicit
 github.com/rossmerr/couchdb_go/client
 github.com/rossmerr/couchdb_go/client/database
