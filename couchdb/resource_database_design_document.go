@@ -119,7 +119,7 @@ func designDocumentCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	created, accepted, err := client.DesignDocuments.DesignDocPut(params)
 	if err != nil {
 		diags = AppendDiagnostic(diags, fmt.Errorf("designDoc"), fmt.Sprintf("%+v", designDoc))
-		return AppendDiagnostic(diags, fmt.Errorf("%s \nDesign Doc:- \n%s", err.Error(), d.Get("view").(string)), "Unable to create design doc")
+		return AppendDiagnostic(diags, fmt.Errorf("%s \nDesign Doc:- \n%s", err.Error(), d.Get("views").(string)), "Unable to create design doc")
 	}
 
 	if created != nil {
