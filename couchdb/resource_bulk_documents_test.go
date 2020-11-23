@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/rossmerr/couchdb_go/client/database"
-	"github.com/rossmerr/couchdb_go/models"
+	"testing"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
-	"testing"
+	"github.com/rossmerr/couchdb_go/client/database"
+	"github.com/rossmerr/couchdb_go/models"
 )
 
 func TestAccCouchDBBulkDocuments(t *testing.T) {
@@ -53,7 +54,7 @@ func testAccCouchDBBulkDocumentsExists(n string) resource.TestCheckFunc {
 		docs := []*models.BasicDoc{}
 		for id, rev := range revisions {
 			docs = append(docs, &models.BasicDoc{
-				ID: id,
+				ID:  id,
 				Rev: rev,
 			})
 		}
@@ -84,7 +85,6 @@ func testAccCouchDBBulkDocumentsDestroy(s *terraform.State) error {
 			return fmt.Errorf(dd.Detail)
 		}
 
-
 		var revisions map[string]string
 		err := json.Unmarshal([]byte(rs.Primary.ID), &revisions)
 		if err != nil {
@@ -94,7 +94,7 @@ func testAccCouchDBBulkDocumentsDestroy(s *terraform.State) error {
 		docs := []*models.BasicDoc{}
 		for id, rev := range revisions {
 			docs = append(docs, &models.BasicDoc{
-				ID: id,
+				ID:  id,
 				Rev: rev,
 			})
 		}

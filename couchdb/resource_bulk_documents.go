@@ -4,10 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/rossmerr/couchdb_go/client/database"
-	"github.com/rossmerr/couchdb_go/models"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
+	"github.com/rossmerr/couchdb_go/client/database"
+	"github.com/rossmerr/couchdb_go/models"
 )
 
 func resourceBulkDocuments() *schema.Resource {
@@ -47,7 +48,6 @@ func bulkDocumentsUpdate(ctx context.Context, d *schema.ResourceData, meta inter
 
 	dbName := d.Get("database").(string)
 
-
 	var revisions map[string]string
 	err := json.Unmarshal([]byte(d.Id()), &revisions)
 	if err != nil {
@@ -62,7 +62,6 @@ func bulkDocumentsUpdate(ctx context.Context, d *schema.ResourceData, meta inter
 
 	for i, raw := range docs {
 		doc := raw.(map[string]interface{})
-
 
 		if _, ok := doc["_id"]; !ok {
 			if id, ok := doc["id"]; !ok {
@@ -89,7 +88,6 @@ func bulkDocumentsUpdate(ctx context.Context, d *schema.ResourceData, meta inter
 	if err != nil {
 		return AppendDiagnostic(diags, err, "Unable to bulk update documents")
 	}
-
 
 	for _, item := range created.Payload {
 		if item.Ok {
@@ -178,7 +176,7 @@ func bulkDocumentsRead(ctx context.Context, d *schema.ResourceData, meta interfa
 	docs := []*models.BasicDoc{}
 	for id, rev := range revisions {
 		ref := &models.BasicDoc{
-			ID: id,
+			ID:  id,
 			Rev: rev,
 		}
 		docs = append(docs, ref)

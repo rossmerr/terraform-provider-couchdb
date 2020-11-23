@@ -23,7 +23,7 @@ else
   echo "Using GNU sed"
   SED="sed -i.bak -r -e"
 fi
-PROVIDER_URL="https:\/\/github.com\/RossMerr\/terraform-provider-couchdb\/issues"
+PROVIDER_URL="https:\/\/github.com\/rossmerr\/terraform-provider-couchdb\/issues"
 
 $SED "s/GH-([0-9]+)/\[#\1\]\($PROVIDER_URL\/\1\)/g" -e 's/\[\[#(.+)([0-9])\)]$/(\[#\1\2))/g' CHANGELOG.md
 

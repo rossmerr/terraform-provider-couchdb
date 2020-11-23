@@ -2,12 +2,13 @@ package couchdb
 
 import (
 	"context"
-	apiclient "github.com/rossmerr/couchdb_go/client"
-	"github.com/rossmerr/couchdb_go/client/server"
-	httptransport "github.com/go-openapi/runtime/client"
-	"github.com/go-openapi/strfmt"
 	"os"
 	"testing"
+
+	httptransport "github.com/go-openapi/runtime/client"
+	"github.com/go-openapi/strfmt"
+	apiclient "github.com/rossmerr/couchdb_go/client"
+	"github.com/rossmerr/couchdb_go/client/server"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"

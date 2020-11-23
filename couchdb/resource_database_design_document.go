@@ -4,11 +4,12 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/rossmerr/couchdb_go/client/design_documents"
-	"github.com/rossmerr/couchdb_go/models"
+	"strings"
+
 	"github.com/hashicorp/terraform-plugin-sdk/v2/diag"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/schema"
-	"strings"
+	"github.com/rossmerr/couchdb_go/client/design_documents"
+	"github.com/rossmerr/couchdb_go/models"
 )
 
 func resourceDesignDocument() *schema.Resource {
@@ -57,7 +58,7 @@ func resourceDesignDocument() *schema.Resource {
 					}
 					return string(b)
 				},
-				DefaultFunc : func() (interface{}, error) {
+				DefaultFunc: func() (interface{}, error) {
 					return "{}", nil
 				},
 			},
@@ -76,7 +77,7 @@ func resourceDesignDocument() *schema.Resource {
 					}
 					return string(b)
 				},
-				DefaultFunc : func() (interface{}, error) {
+				DefaultFunc: func() (interface{}, error) {
 					return "{}", nil
 				},
 			},

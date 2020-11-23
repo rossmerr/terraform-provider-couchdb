@@ -3,8 +3,9 @@ package couchdb
 import (
 	"context"
 	"fmt"
-	"github.com/rossmerr/couchdb_go/client/document"
 	"testing"
+
+	"github.com/rossmerr/couchdb_go/client/document"
 
 	"github.com/hashicorp/terraform-plugin-sdk/v2/helper/resource"
 	"github.com/hashicorp/terraform-plugin-sdk/v2/terraform"
@@ -52,7 +53,6 @@ func testAccCouchDBDatabaseReplicationExists(n string) resource.TestCheckFunc {
 		params := document.NewDocInfoParams().WithDb(rs.Primary.Attributes["database"]).WithDocid(rs.Primary.ID)
 		_, err := client.Document.DocInfo(params)
 
-
 		if err != nil {
 			return err
 		}
@@ -72,15 +72,11 @@ func testAccCouchDBDatabaseReplicationDestroy(s *terraform.State) error {
 			return fmt.Errorf(dd.Detail)
 		}
 
-
-
-
 		params := document.NewDocInfoParams().WithDb(rs.Primary.Attributes["database"]).WithDocid(rs.Primary.ID)
 		_, err := client.Document.DocInfo(params)
 		if err == nil {
 			return fmt.Errorf("replication still exists")
 		}
-
 
 	}
 
