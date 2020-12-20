@@ -118,8 +118,7 @@ func designDocumentCreate(ctx context.Context, d *schema.ResourceData, meta inte
 	params := design_documents.NewDesignDocPutParams().WithDb(dbName).WithBody(designDoc).WithDdoc(docId)
 	created, accepted, err := client.DesignDocuments.DesignDocPut(params)
 	if err != nil {
-		diags = AppendDiagnostic(diags, fmt.Errorf("designDoc"), fmt.Sprintf("%+v", designDoc))
-		return AppendDiagnostic(diags, fmt.Errorf("%s \nDesign Doc:- \n%s", err.Error(), d.Get("views").(string)), "Unable to create design doc")
+		return AppendDiagnostic(diags, err, "Unable to create design doc")
 	}
 
 	if created != nil {
@@ -204,9 +203,8 @@ func designDocumentUpdate(ctx context.Context, d *schema.ResourceData, meta inte
 
 	params := design_documents.NewDesignDocPutParams().WithDb(dbName).WithBody(designDoc).WithDdoc(d.Id())
 	created, accepted, err := client.DesignDocuments.DesignDocPut(params)
-
 	if err != nil {
-		return AppendDiagnostic(diags, fmt.Errorf("%s \nDesign Doc:- \n%s", err.Error(), d.Get("view").(string)), "Unable to update design doc")
+		return AppendDiagnostic(diags, err, "Unable to update design doc")
 	}
 
 	if created != nil {
@@ -232,7 +230,7 @@ func designDocumentDelete(ctx context.Context, d *schema.ResourceData, meta inte
 	params := design_documents.NewDesignDocDeleteParams().WithDb(dbName).WithDdoc(d.Id()).WithRev(&rev)
 	ok, accepted, err := client.DesignDocuments.DesignDocDelete(params)
 	if err != nil {
-		return AppendDiagnostic(diags, fmt.Errorf("docID: %s \nrev: %s \n%s", d.Id(), d.Get("revision").(string), err.Error()), "Unable to delete design doc")
+		return AppendDiagnostic(diags, err, "Unable to delete design doc")
 	}
 
 	d.SetId("")
