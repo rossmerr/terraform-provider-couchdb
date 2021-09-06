@@ -70,6 +70,7 @@ func Provider() *schema.Provider {
 			"couchdb_document":                 resourceDocument(),
 			"couchdb_bulk_documents":           resourceBulkDocuments(),
 			"couchdb_database_design_document": resourceDesignDocument(),
+			"couchdb_cluster":                  resourceCluster(),
 		},
 		ConfigureContextFunc: providerConfigure,
 	}
