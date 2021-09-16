@@ -79,7 +79,7 @@ func bulkDocumentsUpdate(ctx context.Context, d *schema.ResourceData, meta inter
 		docs[i] = doc
 	}
 
-	body := database.BulkDocsBody{
+	body := &models.Body3{
 		Docs: docs,
 	}
 
@@ -130,7 +130,7 @@ func bulkDocumentsDelete(ctx context.Context, d *schema.ResourceData, meta inter
 		docs = append(docs, doc)
 	}
 
-	body := database.BulkDocsBody{
+	body := &models.Body3{
 		Docs: docs,
 	}
 
@@ -182,7 +182,7 @@ func bulkDocumentsRead(ctx context.Context, d *schema.ResourceData, meta interfa
 		docs = append(docs, ref)
 	}
 
-	body := database.BulkGetBody{
+	body := &models.Body2{
 		Docs: docs,
 	}
 
@@ -245,7 +245,7 @@ func bulkDocumentsCreate(ctx context.Context, d *schema.ResourceData, meta inter
 		}
 	}
 
-	body := database.BulkDocsBody{
+	body := &models.Body3{
 		Docs: docs,
 	}
 

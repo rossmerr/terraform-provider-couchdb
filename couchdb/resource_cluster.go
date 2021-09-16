@@ -22,55 +22,53 @@ func resourceCluster() *schema.Resource {
 			"action": {
 				Type:        schema.TypeString,
 				Required:    true,
-				ForceNew:    true,
 				Description: "enable_single_node, enable_cluster, add_node, finish_cluster",
 			},
-			"bind_address": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Default:     "0.0.0.0",
-				Description: "The IP address to which to bind the current node. The special value 0.0.0.0 may be specified to bind to all interfaces on the host. (enable_cluster and enable_single_node only)",
-			},
-			"username": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "The username of the server-level administrator to create. (enable_cluster and enable_single_node only), or the remote server’s administrator username (add_node)",
-			},
-			"password": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "The password for the server-level administrator to create. (enable_cluster and enable_single_node only), or the remote server’s administrator username (add_node)",
-			},
-			"port": {
-				Type:        schema.TypeInt,
-				Optional:    true,
-				Description: "The TCP port to which to bind this node (enable_cluster and enable_single_node only) or the TCP port to which to bind a remote node (add_node only).",
-			},
-			"node_count": {
-				Type:        schema.TypeInt,
-				Optional:    true,
-				Description: "The total number of nodes to be joined into the cluster, including this one. Used to determine the value of the cluster’s n, up to a maximum of 3. (enable_cluster only)",
-			},
-			"remote_node": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "The IP address of the remote node to setup as part of this cluster’s list of nodes. (enable_cluster only)",
-			},
-			"remote_current_user": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "The username of the server-level administrator authorized on the remote node. (enable_cluster only)",
-			},
-			"remote_current_password": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "The password of the server-level administrator authorized on the remote node. (enable_cluster only)",
-			},
-			"host": {
-				Type:        schema.TypeString,
-				Optional:    true,
-				Description: "The remote node IP of the node to add to the cluster. (add_node only)",
-			},
+			// "bind_address": {
+			// 	Type:        schema.TypeString,
+			// 	Optional:    true,
+			// 	Description: "The IP address to which to bind the current node. The special value 0.0.0.0 may be specified to bind to all interfaces on the host. (enable_cluster and enable_single_node only)",
+			// },
+			// "username": {
+			// 	Type:        schema.TypeString,
+			// 	Optional:    true,
+			// 	Description: "The username of the server-level administrator to create. (enable_cluster and enable_single_node only), or the remote server’s administrator username (add_node)",
+			// },
+			// "password": {
+			// 	Type:        schema.TypeString,
+			// 	Optional:    true,
+			// 	Description: "The password for the server-level administrator to create. (enable_cluster and enable_single_node only), or the remote server’s administrator username (add_node)",
+			// },
+			// "port": {
+			// 	Type:        schema.TypeInt,
+			// 	Optional:    true,
+			// 	Description: "The TCP port to which to bind this node (enable_cluster and enable_single_node only) or the TCP port to which to bind a remote node (add_node only).",
+			// },
+			// "node_count": {
+			// 	Type:        schema.TypeInt,
+			// 	Optional:    true,
+			// 	Description: "The total number of nodes to be joined into the cluster, including this one. Used to determine the value of the cluster’s n, up to a maximum of 3. (enable_cluster only)",
+			// },
+			// "remote_node": {
+			// 	Type:        schema.TypeString,
+			// 	Optional:    true,
+			// 	Description: "The IP address of the remote node to setup as part of this cluster’s list of nodes. (enable_cluster only)",
+			// },
+			// "remote_current_user": {
+			// 	Type:        schema.TypeString,
+			// 	Optional:    true,
+			// 	Description: "The username of the server-level administrator authorized on the remote node. (enable_cluster only)",
+			// },
+			// "remote_current_password": {
+			// 	Type:        schema.TypeString,
+			// 	Optional:    true,
+			// 	Description: "The password of the server-level administrator authorized on the remote node. (enable_cluster only)",
+			// },
+			// "host": {
+			// 	Type:        schema.TypeString,
+			// 	Optional:    true,
+			// 	Description: "The remote node IP of the node to add to the cluster. (add_node only)",
+			// },
 			"state": {
 				Type:        schema.TypeString,
 				Computed:    true,
@@ -82,61 +80,16 @@ func resourceCluster() *schema.Resource {
 
 func createCluster(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
 	client, dd := connectToCouchDB(ctx, meta.(*CouchDBConfiguration))
+
 	if dd != nil {
 		return append(diags, *dd)
 	}
-
-	cluster := &models.Cluster{
+	cluster := &models.Body{
 		Action: d.Get("action").(string),
 	}
 
-	port, ok := d.GetOk("port")
-	if ok {
-		cluster.Port = port.(int64)
-	}
-
-	bindAddress, ok := d.GetOk("bind_address")
-	if ok {
-		cluster.BindAddress = bindAddress.(string)
-	}
-
-	host, ok := d.GetOk("host")
-	if ok {
-		cluster.Host = host.(string)
-	}
-
-	nodeCount, ok := d.GetOk("node_count")
-	if ok {
-		cluster.NodeCount = nodeCount.(int64)
-	}
-
-	password, ok := d.GetOk("password")
-	if ok {
-		cluster.Password = password.(string)
-	}
-
-	remoteCurrentPassword, ok := d.GetOk("remote_current_password")
-	if ok {
-		cluster.RemoteCurrentPassword = remoteCurrentPassword.(string)
-	}
-
-	remoteCurrentUser, ok := d.GetOk("remote_current_user")
-	if ok {
-		cluster.RemoteCurrentUser = remoteCurrentUser.(string)
-	}
-
-	remoteNode, ok := d.GetOk("remote_node")
-	if ok {
-		cluster.RemoteNode = remoteNode.(string)
-	}
-
-	username, ok := d.GetOk("Username")
-	if ok {
-		cluster.Username = username.(string)
-	}
-
 	params := server.NewClusterSetupPostParams().WithBody(cluster)
-	_, err := client.Server.ClusterSetupPost(params)
+	_, _, err := client.Server.ClusterSetupPost(params)
 
 	if err != nil {
 		return AppendDiagnostic(diags, err, "Unable to setup cluster")
@@ -144,11 +97,11 @@ func createCluster(ctx context.Context, d *schema.ResourceData, meta interface{}
 
 	d.SetId("cluster")
 
-	return readDatabase(ctx, d, meta)
+	return readCluster(ctx, d, meta)
 }
 
 func updateCluster(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {
-	return readDatabase(ctx, d, meta)
+	return readCluster(ctx, d, meta)
 }
 
 func readCluster(ctx context.Context, d *schema.ResourceData, meta interface{}) (diags diag.Diagnostics) {

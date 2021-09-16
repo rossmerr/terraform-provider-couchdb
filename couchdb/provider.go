@@ -18,6 +18,7 @@ import (
 
 type CouchDBConfiguration struct {
 	Endpoint string
+	Basepath string
 	Scheme   string
 	Username string
 	Password string
@@ -48,6 +49,12 @@ func Provider() *schema.Provider {
 				Type:     schema.TypeString,
 				Optional: true,
 				Default:  "http",
+				ForceNew: true,
+			},
+			"basepath": {
+				Type:     schema.TypeString,
+				Optional: true,
+				Default:  "",
 				ForceNew: true,
 			},
 			"username": {
@@ -84,6 +91,7 @@ func providerConfigure(ctx context.Context, d *schema.ResourceData) (interface{}
 		Username: d.Get("username").(string),
 		Password: d.Get("password").(string),
 		Scheme:   d.Get("scheme").(string),
+		Basepath: d.Get("basepath").(string),
 	}, diags
 }
 
@@ -95,7 +103,7 @@ func connectToCouchDB(ctx context.Context, conf *CouchDBConfiguration) (*apiclie
 	// This is particularly acute when provisioning a server and then immediately
 	// trying to provision a database on it.
 	retryError := resource.RetryContext(ctx, time.Minute, func() *resource.RetryError {
-		transport := httptransport.New(conf.Endpoint, "", []string{conf.Scheme})
+		transport := httptransport.New(conf.Endpoint, conf.Basepath, []string{conf.Scheme})
 		transport.DefaultAuthentication = httptransport.BasicAuth(conf.Username, conf.Password)
 		client = apiclient.New(transport, strfmt.Default)
 

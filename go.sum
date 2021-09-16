@@ -368,8 +368,8 @@ github.com/prometheus/client_model v0.0.0-20190812154241-14fe0d1b01d4/go.mod h1:
 github.com/rogpeppe/go-internal v1.1.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rogpeppe/go-internal v1.2.2/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
 github.com/rogpeppe/go-internal v1.3.0/go.mod h1:M8bDsm7K2OlrFYOpmOWEs/qY81heoFRclV5y23lUDJ4=
-github.com/rossmerr/couchdb_go v0.0.0-20201123121117-6342424da447 h1:UaXYNbfTFqHCH6zS6F3OSue4BegUAuNWeePLsWrxWN8=
-github.com/rossmerr/couchdb_go v0.0.0-20201123121117-6342424da447/go.mod h1:f4u2APtsa8YsNgmtyT9/2lsuQwgruxdXND53PW+iEpQ=
+github.com/rossmerr/couchdb_go v0.0.0-20210916224304-9a7b2f84db43 h1:Dng9NZn48XCUgvRIBGfcucCmokP7UM2e/9S/mr1ijh4=
+github.com/rossmerr/couchdb_go v0.0.0-20210916224304-9a7b2f84db43/go.mod h1:f4u2APtsa8YsNgmtyT9/2lsuQwgruxdXND53PW+iEpQ=
 github.com/sergi/go-diff v1.0.0/go.mod h1:0CfEIISq7TuYL3j771MWULgwwjU+GofnZX9QAmXWZgo=
 github.com/sirupsen/logrus v1.4.0/go.mod h1:LxeOpSwHxABJmUn/MG1IvRgCAasNZTLOkJPxbbu5VWo=
 github.com/sirupsen/logrus v1.4.1/go.mod h1:ni0Sbl8bgC9z8RoU9G6nDWqqs/fq4eDPysMBDgk/93Q=

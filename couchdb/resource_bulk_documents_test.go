@@ -59,7 +59,7 @@ func testAccCouchDBBulkDocumentsExists(n string) resource.TestCheckFunc {
 			})
 		}
 
-		body := database.BulkGetBody{
+		body := &models.Body2{
 			Docs: docs,
 		}
 
@@ -99,7 +99,7 @@ func testAccCouchDBBulkDocumentsDestroy(s *terraform.State) error {
 			})
 		}
 
-		body := database.BulkGetBody{
+		body := &models.Body2{
 			Docs: docs,
 		}
 
